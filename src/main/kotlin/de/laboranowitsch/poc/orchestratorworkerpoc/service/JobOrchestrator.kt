@@ -1,6 +1,9 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import de.laboranowitsch.poc.orchestratorworkerpoc.controller.StartJobPayload
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.ErrorJobPayload
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.annotation.SqsListener
@@ -9,28 +12,31 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.stereotype.Service
-import java.io.Serializable
 import java.time.Instant
-
-// DTO for error handling
-data class ErrorJobPayload(
-    val originalJobId: String,
-    val errorMessage: String,
-    val retryCount: Int = 0,
-    val maxRetries: Int = 3,
-    val failedAt: Instant = Instant.now(),
-) : Serializable
 
 @Service
 @Profile("orchestrator") // <<< Only active in orchestrator mode
 class JobOrchestrator(
     private val sqsTemplate: SqsTemplate,
+    private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
     @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
 ) : LoggingAware {
 
     companion object {
         private const val WORKER_TASKS_COUNT = 4
+    }
+
+    @Suppress("SpreadOperator")
+    fun sendJsonMessage(queue: String, payloadObj: Any, headers: Map<String, String> = emptyMap()) {
+        val json = objectMapper.writeValueAsString(payloadObj)
+        sqsTemplate.send { sender ->
+            val req = sender.queue(queue)
+                .payload(json)
+            headers.forEach { (k, v) -> req.header(k, v) }
+            // set explicit content-type to indicate JSON payload
+            req.header("Content-Type", "application/json")
+        }
     }
 
     @SqsListener("\${app.queues.control-queue}")
@@ -65,15 +71,13 @@ class JobOrchestrator(
         // Generate worker tasks
         val workerTasks = generateWorkerTasks(jobId, payload)
 
-        // Send tasks to worker queue
+        // Send tasks to worker queue as JSON
         workerTasks.forEach { task ->
-            sqsTemplate.send { sender ->
-                sender.queue(workerQueueName)
-                    .payload(task)
-                    .header("job-id", jobId)
-                    .header("task-id", task.taskId)
-                    .header("message-type", "WORKER_TASK")
-            }
+            sendJsonMessage(workerQueueName, task, mapOf(
+                "job-id" to jobId,
+                "task-id" to task.taskId,
+                "message-type" to "WORKER_TASK",
+            ))
             logger().debug("Sent task [{}] for job [{}] to worker queue", task.taskId, jobId)
         }
 
@@ -104,12 +108,10 @@ class JobOrchestrator(
             errorMessage = errorMessage,
         )
 
-        sqsTemplate.send { sender ->
-            sender.queue(controlQueueName)
-                .payload(errorPayload)
-                .header("job-id", jobId)
-                .header("message-type", "ERROR_RETRY")
-        }
+        sendJsonMessage(controlQueueName, errorPayload, mapOf(
+            "job-id" to jobId,
+            "message-type" to "ERROR_RETRY",
+        ))
 
         logger().info("Sent error payload for job [{}] back to control queue", jobId)
     }.onFailure { sendError ->

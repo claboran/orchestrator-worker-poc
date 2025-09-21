@@ -1,4 +1,4 @@
-package de.laboranowitsch.poc.orchestratorworkerpoc.service
+package de.laboranowitsch.poc.orchestratorworkerpoc.data
 
 import java.time.Instant
 
@@ -13,3 +13,4 @@ data class WorkerJobPayload(
     val totalTasks: Int,
     val createdAt: Instant = Instant.now(),
 )
+

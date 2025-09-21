@@ -1,5 +1,7 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTestContainer
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
@@ -24,6 +26,7 @@ import java.time.Duration
 @ActiveProfiles("test", "worker")
 class JobWorkerIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
+    private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
     @MockitoSpyBean private val jobWorker: JobWorker,
 ) {
@@ -44,12 +47,15 @@ class JobWorkerIntegrationTest @Autowired constructor(
             totalTasks = 1,
         )
 
+        val json = objectMapper.writeValueAsString(payload)
+
         sqsTemplate.send { sender ->
             sender.queue(workerQueueName)
-                .payload(payload)
+                .payload(json)
                 .header("job-id", "job-123")
                 .header("task-id", "task-1")
                 .header("message-type", "WORKER_TASK")
+                .header("Content-Type", "application/json")
         }
 
         await()
@@ -77,12 +83,14 @@ class JobWorkerIntegrationTest @Autowired constructor(
         }
 
         tasks.forEach { payload ->
+            val json = objectMapper.writeValueAsString(payload)
             sqsTemplate.send { sender ->
                 sender.queue(workerQueueName)
-                    .payload(payload)
+                    .payload(json)
                     .header("job-id", payload.jobId)
                     .header("task-id", payload.taskId)
                     .header("message-type", "WORKER_TASK")
+                    .header("Content-Type", "application/json")
             }
         }
 
@@ -93,7 +101,7 @@ class JobWorkerIntegrationTest @Autowired constructor(
                     any<WorkerJobPayload>(),
                     eq("job-456"),
                     any(),
-                    any(),
+                    any()
                 )
             }
     }

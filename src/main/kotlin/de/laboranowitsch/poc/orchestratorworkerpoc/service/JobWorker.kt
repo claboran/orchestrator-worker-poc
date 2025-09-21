@@ -1,5 +1,7 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.annotation.SqsListener
@@ -19,10 +21,22 @@ import org.springframework.stereotype.Service
 @Profile("worker")
 class JobWorker(
     private val sqsTemplate: SqsTemplate,
+    private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
 ) : LoggingAware {
 
+    // Listener now accepts a deserialized WorkerJobPayload directly (awspring's message conversion
+    // will convert the JSON body to the target type when Content-Type is application/json).
     @SqsListener("\${app.queues.worker-queue}")
+    fun onWorkerMessage(
+        @Payload payload: WorkerJobPayload,
+        @Header("job-id") jobId: String,
+        @Header("task-id") taskId: String,
+        @Header(value = "message-type", required = false) messageType: String? = null,
+    ) {
+        processTask(payload, jobId, taskId, messageType)
+    }
+
     fun processTask(
         @Payload payload: WorkerJobPayload,
         @Header("job-id") jobId: String,
@@ -58,12 +72,14 @@ class JobWorker(
     )
 
     private fun pushBackToWorkerQueue(jobId: String, taskId: String, payload: WorkerJobPayload) = runCatching {
+        val json = objectMapper.writeValueAsString(payload)
         sqsTemplate.send { sender ->
             sender.queue(workerQueueName)
-                .payload(payload)
+                .payload(json)
                 .header("job-id", jobId)
                 .header("task-id", taskId)
                 .header("message-type", "WORKER_TASK_RETRY")
+                .header("Content-Type", "application/json")
         }
         logger().info("Pushed back task [{}] for job [{}] to worker queue", taskId, jobId)
     }.onFailure { sendError ->
