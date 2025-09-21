@@ -163,3 +163,45 @@ No explicit license provided. If you plan to publish this repository publicly (e
 
 ---
 Last updated: 2025-09-21
+
+
+## Running multiple instances in IntelliJ (one orchestrator + two workers)
+
+If you want to run one Orchestrator and two Worker instances from IntelliJ (for local manual testing), create three Spring Boot run configurations that use the same main class but different program arguments and ports. The project already contains a Spring Boot run configuration named `OrchestratorWorkerPocApplication` in `.idea/workspace.xml` that you can duplicate — the main class is `de.laboranowitsch.poc.orchestratorworkerpoc.OrchestratorWorkerPocApplication`.
+
+Step-by-step (create three Spring Boot run configurations)
+- Open Run | Edit Configurations... in IntelliJ.
+- Click the + button and choose **Spring Boot** (or duplicate the existing `OrchestratorWorkerPocApplication`).
+
+Create the Orchestrator config
+- Name: `Orchestrator`
+- Main class: `de.laboranowitsch.poc.orchestratorworkerpoc.OrchestratorWorkerPocApplication`
+- Module: select the project's main module (e.g. `orchestrator-worker-poc.main`)
+- Program arguments:
+  --mode orchestrator --spring.profiles.active=local --server.port=9945
+- (Optional) VM options: leave empty
+- Save the configuration.
+
+Create two Worker configs
+- Duplicate the Orchestrator config or add two new Spring Boot configs and adjust:
+  - Name: `Worker-1`
+    Program arguments: --mode worker --spring.profiles.active=local --server.port=9946
+  - Name: `Worker-2`
+    Program arguments: --mode worker --spring.profiles.active=local --server.port=9947
+- These different ports avoid port conflicts when running multiple workers on the same machine.
+
+Allow multiple instances
+- In the Run/Debug Configurations dialog, for each of the above configurations make sure the configuration allows running multiple instances:
+  - Find the option labeled like **Single instance only** and uncheck it (or enable **Allow parallel run** depending on your IntelliJ version). This lets you run more than one copy of the same Spring Boot app.
+
+Run them
+- Run `Orchestrator` first, then `Worker-1` and `Worker-2` (order doesn't strictly matter, but starting the orchestrator first makes it easier to observe job dispatch).
+- Use the Run tool window to inspect logs for each instance. The orchestrator will bind to port 9945 and each worker to its configured port.
+
+Tips and alternatives
+- If you prefer `bootRun` via Gradle, create Gradle run configurations and pass `--args='--mode worker --spring.profiles.active=local --server.port=9946'` (Gradle run configs accept extra arguments). The Spring Boot run configuration is usually more convenient for debugging.
+- If you accidentally get port conflicts, choose different `--server.port` values for the second worker.
+- The project's `.idea/workspace.xml` contains a `OrchestratorWorkerPocApplication` run configuration; you can duplicate/modify it instead of creating a new one from scratch.
+
+Security note
+- These run configurations use local/test credentials and the `local` profile. Do not store production AWS credentials in the project or run these local configs in a production environment.

@@ -1,9 +1,12 @@
+# Default (applies unless overridden by a profile)
 spring:
-  config:
-    activate:
-      on-profile: local
   cloud:
     aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: test-key
+        secret-key: test-secret
       sqs:
         endpoint: http://localhost:9324
         # Long polling is enabled by setting a wait-time-seconds > 0.
@@ -12,11 +15,6 @@ spring:
         listener:
           wait-time-seconds: 20
           max-number-of-messages: 1 # How many messages to fetch in one poll
-      credentials:
-        access-key: test-key
-        secret-key: test-secret
-      region:
-        static: us-east-1
 
 app:
   queues:
