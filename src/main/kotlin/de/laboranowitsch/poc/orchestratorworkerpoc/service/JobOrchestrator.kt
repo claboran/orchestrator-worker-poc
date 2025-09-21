@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.stereotype.Service
-import java.time.Instant
 
 @Service
 @Profile("orchestrator") // <<< Only active in orchestrator mode
@@ -73,11 +72,15 @@ class JobOrchestrator(
 
         // Send tasks to worker queue as JSON
         workerTasks.forEach { task ->
-            sendJsonMessage(workerQueueName, task, mapOf(
-                "job-id" to jobId,
-                "task-id" to task.taskId,
-                "message-type" to "WORKER_TASK",
-            ))
+            sendJsonMessage(
+                workerQueueName,
+                task,
+                mapOf(
+                    "job-id" to jobId,
+                    "task-id" to task.taskId,
+                    "message-type" to "WORKER_TASK",
+                ),
+            )
             logger().debug("Sent task [{}] for job [{}] to worker queue", task.taskId, jobId)
         }
 
@@ -108,10 +111,14 @@ class JobOrchestrator(
             errorMessage = errorMessage,
         )
 
-        sendJsonMessage(controlQueueName, errorPayload, mapOf(
-            "job-id" to jobId,
-            "message-type" to "ERROR_RETRY",
-        ))
+        sendJsonMessage(
+            controlQueueName,
+            errorPayload,
+            mapOf(
+                "job-id" to jobId,
+                "message-type" to "ERROR_RETRY",
+            ),
+        )
 
         logger().info("Sent error payload for job [{}] back to control queue", jobId)
     }.onFailure { sendError ->

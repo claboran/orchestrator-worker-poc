@@ -2,7 +2,7 @@ package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTestContainer
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.AbstractElasticMqTest
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
@@ -17,8 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.time.Duration
 
@@ -29,7 +27,7 @@ class JobWorkerIntegrationTest @Autowired constructor(
     private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
     @MockitoSpyBean private val jobWorker: JobWorker,
-) {
+) : AbstractElasticMqTest() {
 
     @BeforeEach
     fun beforeEach() {
@@ -65,7 +63,7 @@ class JobWorkerIntegrationTest @Autowired constructor(
                     any<WorkerJobPayload>(),
                     eq("job-123"),
                     eq("task-1"),
-                    any()
+                    any(),
                 )
             }
     }
@@ -101,16 +99,8 @@ class JobWorkerIntegrationTest @Autowired constructor(
                     any<WorkerJobPayload>(),
                     eq("job-456"),
                     any(),
-                    any()
+                    any(),
                 )
             }
-    }
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun configureProperties(registry: DynamicPropertyRegistry) {
-            ElasticMqTestContainer.registerSpringProperties(registry)
-        }
     }
 }
