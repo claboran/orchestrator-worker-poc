@@ -1,0 +1,47 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  cloud:
+    aws:
+      sqs:
+        endpoint: http://localhost:9324
+        # Long polling is enabled by setting a wait-time-seconds > 0.
+        # This tells the listener to wait up to 20 seconds for a message to arrive
+        # before returning an empty response, significantly reducing idle chatter.
+        listener:
+          wait-time-seconds: 20
+          max-number-of-messages: 1 # How many messages to fetch in one poll
+      credentials:
+        access-key: test-key
+        secret-key: test-secret
+      region:
+        static: us-east-1
+
+app:
+  queues:
+    control-queue: "job-control-queue"
+    worker-queue: "job-worker-queue"
+
+server:
+  port: 9944
+
+---
+# --- Profile-specific configurations ---
+
+# Settings for the ORCHESTRATOR profile
+spring:
+  config:
+    activate:
+      on-profile: orchestrator
+server:
+  port: 9945 # Use a different port for the orchestrator's health/metrics
+
+---
+# Settings for the WORKER profile
+spring:
+  config:
+    activate:
+      on-profile: worker
+server:
+  port: 9946 # Use a different port for the worker's health/metrics
