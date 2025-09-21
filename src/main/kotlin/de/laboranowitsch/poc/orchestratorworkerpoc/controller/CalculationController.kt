@@ -10,35 +10,43 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.io.Serializable
 import java.util.*
 
 // DTOs for the REST API
 data class StartRequest(val inputs: List<String>)
 data class StartResponse(val jobId: String)
-// DTO for the message payload
-data class StartJobPayload(val someData: String) : Serializable // Or use a more specific payload
 
 @RestController
 @RequestMapping("/api/calculate")
-@Profile("orchestrator") // <<< Changed from web-api to orchestrator
+@Profile("orchestrator") // Only active in orchestrator mode
 class CalculationController(
     private val sqsTemplate: SqsTemplate,
     @Value("\${app.queues.control-queue}") private val controlQueueName: String,
-    // In a real app, you'd inject a repository to save the initial job state
 ) : LoggingAware {
 
     @PostMapping("/start")
     fun startCalculation(@RequestBody request: StartRequest): ResponseEntity<StartResponse> =
-        UUID.randomUUID().toString().let { jobId ->
-            logger().info("API received request to start job [{}]. Enqueuing...", jobId)
-            // save the job state to DB as "STARTED" with jobId and request.inputs
+        runCatching {
+            val jobId = UUID.randomUUID().toString()
+            val payload = StartJobPayload(
+                someData = request.inputs.joinToString(","),
+                description = "Calculation job with ${request.inputs.size} inputs"
+            )
+
             sqsTemplate.send { sender ->
                 sender.queue(controlQueueName)
-                    .payload(StartJobPayload("Job triggered with ${request.inputs.size} items"))
+                    .payload(payload)
                     .header("job-id", jobId)
                     .header("message-type", "START_JOB")
             }
-            ResponseEntity.accepted().body(StartResponse(jobId))
-        }
+
+            logger().info("Started calculation job [{}] with inputs: {}", jobId, request.inputs)
+            StartResponse(jobId)
+        }.fold(
+            onSuccess = { response -> ResponseEntity.ok(response) },
+            onFailure = { error ->
+                logger().error("Failed to start calculation: {}", error.message, error)
+                ResponseEntity.internalServerError().build()
+            }
+        )
 }

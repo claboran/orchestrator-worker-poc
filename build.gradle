@@ -35,9 +35,22 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     developmentOnly "org.springframework.boot:spring-boot-devtools"
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit5"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
+    // Testcontainers for integration tests
+    testImplementation platform("org.testcontainers:testcontainers-bom:1.20.4")
+    testImplementation "org.testcontainers:junit-jupiter"
+    testImplementation "org.testcontainers:testcontainers"
+    testImplementation "org.springframework.boot:spring-boot-testcontainers"
+    testImplementation "org.awaitility:awaitility:4.2.1"
+    testImplementation "software.amazon.awssdk:sqs:2.25.62"
+
+    // Mockito for Spring Boot 3.4+ (replacement for deprecated @SpyBean)
+    testImplementation "org.mockito:mockito-core"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:5.2.1"
 
     // Spring Cloud AWS SQS Starter
     implementation "io.awspring.cloud:spring-cloud-aws-starter-sqs"

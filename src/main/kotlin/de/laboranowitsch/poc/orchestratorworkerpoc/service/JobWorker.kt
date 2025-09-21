@@ -7,6 +7,7 @@ import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.Header
+import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Service
 
 /**
@@ -23,7 +24,7 @@ class JobWorker(
 
     @SqsListener("\${app.queues.worker-queue}")
     fun processTask(
-        payload: WorkerJobPayload,
+        @Payload payload: WorkerJobPayload,
         @Header("job-id") jobId: String,
         @Header("task-id") taskId: String,
         @Header(value = "message-type", required = false) messageType: String? = null,

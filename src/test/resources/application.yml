@@ -1,0 +1,13 @@
+spring:
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: test-key
+        secret-key: test-secret
+
+app:
+  queues:
+    control-queue: job-control-queue
+    worker-queue: job-worker-queue

@@ -12,16 +12,6 @@ import org.springframework.stereotype.Service
 import java.io.Serializable
 import java.time.Instant
 
-// DTO for worker messages
-data class WorkerJobPayload(
-    val jobId: String,
-    val taskId: String,
-    val data: String,
-    val taskNumber: Int,
-    val totalTasks: Int,
-    val createdAt: Instant = Instant.now()
-) : Serializable
-
 // DTO for error handling
 data class ErrorJobPayload(
     val originalJobId: String,
@@ -102,32 +92,32 @@ class JobOrchestrator(
             WorkerJobPayload(
                 jobId = jobId,
                 taskId = "$jobId-task-$taskNumber",
-                data = "${payload.someData} - Task $taskNumber",
+                data = "${payload.someData}-part-$taskNumber",
                 taskNumber = taskNumber,
-                totalTasks = WORKER_TASKS_COUNT,
+                totalTasks = WORKER_TASKS_COUNT
             )
         }
 
     private fun sendErrorToControlQueue(jobId: String, errorMessage: String) = runCatching {
         val errorPayload = ErrorJobPayload(
             originalJobId = jobId,
-            errorMessage = errorMessage,
+            errorMessage = errorMessage
         )
 
         sqsTemplate.send { sender ->
             sender.queue(controlQueueName)
                 .payload(errorPayload)
                 .header("job-id", jobId)
-                .header("message-type", "ERROR_NOTIFICATION")
+                .header("message-type", "ERROR_RETRY")
         }
 
-        logger().info("Sent error notification for job [{}] back to control queue", jobId)
+        logger().info("Sent error payload for job [{}] back to control queue", jobId)
     }.onFailure { sendError ->
         logger().error(
-            "Failed to send error notification for job [{}] to control queue: {}",
+            "Failed to send error payload for job [{}] to control queue: {}",
             jobId,
             sendError.message,
-            sendError,
+            sendError
         )
     }
 }
