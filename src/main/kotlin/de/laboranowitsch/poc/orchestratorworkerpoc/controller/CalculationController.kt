@@ -1,5 +1,6 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.controller
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.operations.SqsTemplate
@@ -21,6 +22,7 @@ data class StartResponse(val jobId: String)
 @Profile("orchestrator") // Only active in orchestrator mode
 class CalculationController(
     private val sqsTemplate: SqsTemplate,
+    private val objectMapper: ObjectMapper,
     @Value("\${app.queues.control-queue}") private val controlQueueName: String,
 ) : LoggingAware {
 
@@ -33,11 +35,15 @@ class CalculationController(
                 description = "Calculation job with ${request.inputs.size} inputs"
             )
 
+            // Serialize payload to JSON and set Content-Type header for consistent behavior
+            val json = objectMapper.writeValueAsString(payload)
+
             sqsTemplate.send { sender ->
                 sender.queue(controlQueueName)
-                    .payload(payload)
+                    .payload(json)
                     .header("job-id", jobId)
                     .header("message-type", "START_JOB")
+                    .header("Content-Type", "application/json")
             }
 
             logger().info("Started calculation job [{}] with inputs: {}", jobId, request.inputs)

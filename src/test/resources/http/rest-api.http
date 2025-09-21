@@ -1,0 +1,10 @@
+### Start a calculation job (orchestrator)
+# Use the orchestrator port (default in README: 9945) and send a JSON body.
+POST http://localhost:9945/api/calculate/start
+Content-Type: application/json
+
+{
+  "inputs": ["one", "two", "three"]
+}
+
+###

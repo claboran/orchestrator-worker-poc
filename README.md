@@ -63,29 +63,25 @@ Optional:
 - Worker default port (actuator/health etc. per profile): 9946
 
 4) Trigger a Job
-- The orchestrator exposes a REST endpoint to start a job, available only when running in orchestrator mode:
-  - POST http://localhost:9945/api/calculate/start
-  - Body (JSON):
-    ```json
-    {
-      "inputs": ["one", "two", "three"]
-    }
-    ```
-  - Example using cURL:
-    - Linux/macOS:
-      ```bash
-      curl -X POST \
-        -H "Content-Type: application/json" \
-        -d '{"inputs":["one","two","three"]}' \
-        http://localhost:9945/api/calculate/start
-      ```
-    - Windows (PowerShell):
-      ```powershell
-      curl -Method POST `
-        -ContentType "application/json" `
-        -Body '{"inputs":["one","two","three"]}' `
-        http://localhost:9945/api/calculate/start
-      ```
+- There's a ready-to-run HTTP request file included in the repository that contains a POST request to start a calculation job:
+
+  `src/test/resources/http/rest-api.http`
+
+  - Open this file in your IDE (JetBrains HTTP Client or VS Code REST Client) and run the `POST http://localhost:9945/api/calculate/start` request. The file contains a sample JSON body (e.g. `["one","two","three"]`) and sends `Content-Type: application/json`.
+
+  Quick run in editor (JetBrains / VS Code)
+  - JetBrains (IntelliJ, GoLand, etc.): open the `rest-api.http` file, place the caret on the POST request block and click the green "Run" icon in the gutter (or use the contextual Run action above the request) to execute the request and inspect the response in the HTTP client tool window.
+  - VS Code (REST Client extension): open the file, and click the `Send Request` link that appears above the request block to run it; the response will open in a new editor tab.
+
+- Optional: if you prefer curl from the command line (not required if you use the included request file), you can run:
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"inputs":["one","two","three"]}' \
+  http://localhost:9945/api/calculate/start
+```
+
 - Response:
   ```json
   { "jobId": "<uuid>" }
@@ -164,7 +160,6 @@ This is a PoC and not intended for production. Feel free to open issues or pull 
 
 ## License
 No explicit license provided. If you plan to publish this repository publicly (e.g., GitHub), consider adding a LICENSE file (e.g., MIT, Apache 2.0) to clarify usage terms.
-
 
 ---
 Last updated: 2025-09-21
