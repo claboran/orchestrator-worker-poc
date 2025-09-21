@@ -11,5 +11,5 @@ data class WorkerJobPayload(
     val data: String,
     val taskNumber: Int,
     val totalTasks: Int,
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
 )

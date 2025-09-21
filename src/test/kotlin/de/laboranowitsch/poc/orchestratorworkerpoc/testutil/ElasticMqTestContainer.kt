@@ -14,13 +14,16 @@ import java.net.URI
  * Common ElasticMQ Testcontainers setup to be reused across integration tests.
  */
 object ElasticMqTestContainer {
-    private val IMAGE: DockerImageName = DockerImageName.parse("softwaremill/elasticmq-native:1.4.10")
+    // Use the correct ElasticMQ image that actually exists
+    private val IMAGE: DockerImageName = DockerImageName.parse("softwaremill/elasticmq:latest")
 
-    // Fixed type issue with proper GenericContainer type
-    val container: GenericContainer<*> = GenericContainer(IMAGE).apply {
-        withExposedPorts(9324, 9325)
-        waitingFor(Wait.forListeningPort())
-        start()
+    // Lazy initialization to avoid starting container on class load
+    val container: GenericContainer<*> by lazy {
+        GenericContainer(IMAGE).apply {
+            withExposedPorts(9324, 9325)
+            waitingFor(Wait.forListeningPort())
+            start()
+        }
     }
 
     fun elasticEndpoint(): String = "http://${container.host}:${container.getMappedPort(9324)}"
@@ -35,12 +38,16 @@ object ElasticMqTestContainer {
         registry.add("spring.cloud.aws.credentials.access-key") { "test-key" }
         registry.add("spring.cloud.aws.credentials.secret-key") { "test-secret" }
 
+        // Override the queue names to ensure they match what we create
+        registry.add("app.queues.control-queue") { "job-control-queue" }
+        registry.add("app.queues.worker-queue") { "job-worker-queue" }
+
         // Ensure queues exist before Spring context initializes listeners
         ensureQueues(endpoint)
     }
 
     private fun ensureQueues(endpoint: String) {
-        try {
+        runCatching {
             val client = SqsClient.builder()
                 .endpointOverride(URI.create(endpoint))
                 .region(Region.US_EAST_1)
@@ -54,10 +61,15 @@ object ElasticMqTestContainer {
             listOf("job-control-queue", "job-worker-queue").forEach { name ->
                 runCatching {
                     client.createQueue { it.queueName(name) }
+                }.onSuccess {
+                    println("Created queue: $name")
+                }.onFailure { error ->
+                    println("Failed to create queue $name: ${error.message}")
                 }
             }
-        } catch (_: Throwable) {
-            // Best-effort; the test will fail later if queues truly don't exist
+            client.close()
+        }.onFailure { error ->
+            println("Failed to ensure queues exist: ${error.message}")
         }
     }
 }

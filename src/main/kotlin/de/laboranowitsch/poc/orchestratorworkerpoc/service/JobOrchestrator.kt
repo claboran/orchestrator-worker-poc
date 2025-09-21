@@ -18,15 +18,15 @@ data class ErrorJobPayload(
     val errorMessage: String,
     val retryCount: Int = 0,
     val maxRetries: Int = 3,
-    val failedAt: Instant = Instant.now()
+    val failedAt: Instant = Instant.now(),
 ) : Serializable
 
 @Service
 @Profile("orchestrator") // <<< Only active in orchestrator mode
 class JobOrchestrator(
     private val sqsTemplate: SqsTemplate,
-    @Value("\${app.queues.worker-queue}") private val workerQueueName: String,
-    @Value("\${app.queues.control-queue}") private val controlQueueName: String,
+    @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
+    @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
 ) : LoggingAware {
 
     companion object {
@@ -37,7 +37,7 @@ class JobOrchestrator(
     fun orchestrateJob(
         payload: StartJobPayload,
         @Header("job-id") jobId: String,
-        @Header(value = "message-type", required = false) messageType: String? = null
+        @Header(value = "message-type", required = false) messageType: String? = null,
     ) = runCatching {
         logger().info("Orchestrator received job [{}] with message type [{}]", jobId, messageType)
 
@@ -94,14 +94,14 @@ class JobOrchestrator(
                 taskId = "$jobId-task-$taskNumber",
                 data = "${payload.someData}-part-$taskNumber",
                 taskNumber = taskNumber,
-                totalTasks = WORKER_TASKS_COUNT
+                totalTasks = WORKER_TASKS_COUNT,
             )
         }
 
     private fun sendErrorToControlQueue(jobId: String, errorMessage: String) = runCatching {
         val errorPayload = ErrorJobPayload(
             originalJobId = jobId,
-            errorMessage = errorMessage
+            errorMessage = errorMessage,
         )
 
         sqsTemplate.send { sender ->
@@ -117,7 +117,7 @@ class JobOrchestrator(
             "Failed to send error payload for job [{}] to control queue: {}",
             jobId,
             sendError.message,
-            sendError
+            sendError,
         )
     }
 }

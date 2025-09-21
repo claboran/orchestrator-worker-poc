@@ -1,6 +1,10 @@
 spring:
   cloud:
     aws:
+      sqs:
+        listener:
+          wait-time-seconds: 20
+          max-number-of-messages: 1
       region:
         static: us-east-1
       credentials:

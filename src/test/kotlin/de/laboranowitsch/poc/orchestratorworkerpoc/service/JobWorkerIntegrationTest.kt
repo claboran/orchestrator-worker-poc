@@ -1,60 +1,49 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTestContainer
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.clearInvocations
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Primary
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.time.Duration
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test", "worker")
-@TestPropertySource(properties = [
-    "app.queues.control-queue=test-control-queue",
-    "app.queues.worker-queue=test-worker-queue",
-    "spring.cloud.aws.sqs.endpoint=http://localhost:9324",
-    "spring.cloud.aws.region.static=us-east-1",
-    "spring.cloud.aws.credentials.access-key=test-key",
-    "spring.cloud.aws.credentials.secret-key=test-secret"
-])
-class JobWorkerIntegrationTest {
+class JobWorkerIntegrationTest @Autowired constructor(
+    private val sqsTemplate: SqsTemplate,
+    @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
+    @MockitoSpyBean private val jobWorker: JobWorker,
+) {
 
-    @TestConfiguration
-    class TestConfig {
-        @Bean
-        @Primary
-        fun mockJobWorker(): JobWorker = mock()
+    @BeforeEach
+    fun beforeEach() {
+        // Clear previous invocations so each test starts with a clean spy.
+        clearInvocations(jobWorker)
     }
-
-    @Autowired
-    lateinit var sqsTemplate: SqsTemplate
-
-    @Value("\${app.queues.worker-queue}")
-    lateinit var workerQueueName: String
-
-    @Autowired
-    lateinit var jobWorker: JobWorker
 
     @Test
     fun `should process message from worker queue`() {
-        // Given
         val payload = WorkerJobPayload(
             jobId = "job-123",
             taskId = "task-1",
             data = "some work",
             taskNumber = 1,
-            totalTasks = 1
+            totalTasks = 1,
         )
 
-        // When
         sqsTemplate.send { sender ->
             sender.queue(workerQueueName)
                 .payload(payload)
@@ -63,7 +52,6 @@ class JobWorkerIntegrationTest {
                 .header("message-type", "WORKER_TASK")
         }
 
-        // Then
         await()
             .atMost(Duration.ofSeconds(15))
             .untilAsserted {
@@ -78,18 +66,16 @@ class JobWorkerIntegrationTest {
 
     @Test
     fun `should handle multiple tasks with different task numbers`() {
-        // Given
         val tasks = (1..3).map { taskNum ->
             WorkerJobPayload(
                 jobId = "job-456",
                 taskId = "task-$taskNum",
                 data = "work-data-$taskNum",
                 taskNumber = taskNum,
-                totalTasks = 3
+                totalTasks = 3,
             )
         }
 
-        // When
         tasks.forEach { payload ->
             sqsTemplate.send { sender ->
                 sender.queue(workerQueueName)
@@ -100,7 +86,6 @@ class JobWorkerIntegrationTest {
             }
         }
 
-        // Then
         await()
             .atMost(Duration.ofSeconds(15))
             .untilAsserted {
@@ -108,8 +93,16 @@ class JobWorkerIntegrationTest {
                     any<WorkerJobPayload>(),
                     eq("job-456"),
                     any(),
-                    any()
+                    any(),
                 )
             }
+    }
+
+    companion object {
+        @JvmStatic
+        @DynamicPropertySource
+        fun configureProperties(registry: DynamicPropertyRegistry) {
+            ElasticMqTestContainer.registerSpringProperties(registry)
+        }
     }
 }

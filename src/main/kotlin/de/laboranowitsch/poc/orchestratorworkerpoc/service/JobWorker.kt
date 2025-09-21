@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service
 @Profile("worker")
 class JobWorker(
     private val sqsTemplate: SqsTemplate,
-    @Value("\${app.queues.worker-queue}") private val workerQueueName: String,
+    @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
 ) : LoggingAware {
 
     @SqsListener("\${app.queues.worker-queue}")
