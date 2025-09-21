@@ -1,0 +1,17 @@
+{
+  "properties": [
+    {
+      "name": "spring.cloud.aws.sqs.listener.wait-time-seconds",
+      "type": "java.lang.Integer",
+      "description": "Long polling wait time in seconds for SQS ReceiveMessage (listener). A value > 0 enables long polling.",
+      "defaultValue": 0
+    },
+    {
+      "name": "spring.cloud.aws.sqs.listener.max-number-of-messages",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of messages to fetch in a single poll for the SQS listener.",
+      "defaultValue": 1
+    }
+  ]
+}
+

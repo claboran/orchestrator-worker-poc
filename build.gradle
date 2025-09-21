@@ -1,6 +1,7 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.9.25'
     id 'org.jetbrains.kotlin.plugin.spring' version '1.9.25'
+    id 'org.jetbrains.kotlin.kapt' version '1.9.25'
     id 'org.springframework.boot' version '3.5.6'
     id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -35,6 +36,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     developmentOnly "org.springframework.boot:spring-boot-devtools"
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+    kapt "org.springframework.boot:spring-boot-configuration-processor"
 
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit5"
