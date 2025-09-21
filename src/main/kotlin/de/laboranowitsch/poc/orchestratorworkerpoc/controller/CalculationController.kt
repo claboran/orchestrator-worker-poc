@@ -5,7 +5,6 @@ import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Profile
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -19,7 +18,6 @@ data class StartResponse(val jobId: String)
 
 @RestController
 @RequestMapping("/api/calculate")
-@Profile("orchestrator") // Only active in orchestrator mode
 class CalculationController(
     private val sqsTemplate: SqsTemplate,
     private val objectMapper: ObjectMapper,

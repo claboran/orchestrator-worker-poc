@@ -1,6 +1,6 @@
 ### Start a calculation job (orchestrator)
-# Use the orchestrator port (default in README: 9945) and send a JSON body.
-POST http://localhost:9945/api/calculate/start
+# Use the orchestrator port (default in README: 9946) and send a JSON body.
+POST http://localhost:9946/api/calculate/start
 Content-Type: application/json
 
 {
