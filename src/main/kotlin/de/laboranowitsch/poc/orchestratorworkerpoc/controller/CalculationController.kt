@@ -21,7 +21,7 @@ data class StartResponse(val jobId: String)
 class CalculationController(
     private val sqsTemplate: SqsTemplate,
     private val objectMapper: ObjectMapper,
-    @Value("\${app.queues.control-queue}") private val controlQueueName: String,
+    @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
 ) : LoggingAware {
 
     @PostMapping("/start")
@@ -30,7 +30,7 @@ class CalculationController(
             val jobId = UUID.randomUUID().toString()
             val payload = StartJobPayload(
                 someData = request.inputs.joinToString(","),
-                description = "Calculation job with ${request.inputs.size} inputs"
+                description = "Calculation job with ${request.inputs.size} inputs",
             )
 
             // Serialize payload to JSON and set Content-Type header for consistent behavior
@@ -51,6 +51,6 @@ class CalculationController(
             onFailure = { error ->
                 logger().error("Failed to start calculation: {}", error.message, error)
                 ResponseEntity.internalServerError().build()
-            }
+            },
         )
 }
