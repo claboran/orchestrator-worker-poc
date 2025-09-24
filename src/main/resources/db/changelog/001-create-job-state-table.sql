@@ -11,4 +11,3 @@ CREATE TABLE job_state (
 
 --changeset lab:1 rollback
 DROP TABLE job_state;
-

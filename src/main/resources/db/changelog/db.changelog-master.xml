@@ -6,7 +6,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- include the formatted SQL changelog -->
-    <include file="classpath:db/changelog/db.changelog.sql"/>
+    <include file="classpath:db/changelog/001-create-job-state-table.sql"/>
 
 </databaseChangeLog>
 
