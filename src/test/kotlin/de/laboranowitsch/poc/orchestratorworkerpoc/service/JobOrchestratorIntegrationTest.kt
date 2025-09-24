@@ -1,8 +1,9 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import de.laboranowitsch.poc.orchestratorworkerpoc.controller.StartRequest
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.AbstractElasticMqTest
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTest
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTestContainer
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTestContainers
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -21,11 +22,12 @@ import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
 import java.net.URI
 import java.time.Duration
 
+@ElasticMqTest
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test", "orchestrator")
 class JobOrchestratorIntegrationTest @Autowired constructor(
     private val rest: TestRestTemplate,
-) : AbstractElasticMqTest() {
+) : ElasticMqTestContainers() {
 
     @Test
     fun `should dispatch worker tasks when receiving a start request`() {
@@ -42,7 +44,7 @@ class JobOrchestratorIntegrationTest @Autowired constructor(
         assert(resp.statusCode.is2xxSuccessful)
 
         // Build an SQS client pointed at the Testcontainers ElasticMQ
-        val endpoint = AbstractElasticMqTest.elasticEndpoint()
+        val endpoint = ElasticMqTestContainers.elasticMqEndpoint()
         val sqs = SqsClient.builder()
             .endpointOverride(URI.create(endpoint))
             .region(Region.US_EAST_1)

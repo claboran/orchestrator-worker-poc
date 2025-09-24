@@ -2,32 +2,27 @@ package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.AbstractElasticMqTest
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTest
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTestContainers
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.atLeastOnce
-import org.mockito.kotlin.clearInvocations
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.times
-import org.mockito.kotlin.verify
+import org.mockito.kotlin.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.time.Duration
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@ElasticMqTest
 @ActiveProfiles("test", "worker")
 class JobWorkerIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
     private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
     @MockitoSpyBean private val jobWorker: JobWorker,
-) : AbstractElasticMqTest() {
+) : ElasticMqTestContainers() {
 
     @BeforeEach
     fun beforeEach() {
