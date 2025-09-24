@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   elasticmq:
-    image: softwaremill/elasticmq-native:latest
+    image: softwaremill/elasticmq-native:1.6.0
     container_name: poc-elasticmq
     ports:
       - "9324:9324"
@@ -11,3 +11,24 @@ services:
         source: ./docker/elasticmq/elasticmq.conf
         target: /opt/elasticmq.conf
         read_only: true
+
+  postgres:
+    image: postgres:16
+    container_name: poc-postgres
+    environment:
+      POSTGRES_USER: pocuser
+      POSTGRES_PASSWORD: pocpass
+      POSTGRES_DB: pocdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pocuser -d pocdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+    driver: local

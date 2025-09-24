@@ -15,6 +15,16 @@ spring:
         listener:
           wait-time-seconds: 20
           max-number-of-messages: 1 # How many messages to fetch in one poll
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orchestrator
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+  liquibase:
+    change-log: db/changelog/db.changelog-master.xml
 
 app:
   queues:
