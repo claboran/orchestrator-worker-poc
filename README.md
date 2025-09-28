@@ -124,6 +124,53 @@ Environment/Profiles
     - `java -jar build/libs/orchestrator-worker-poc-0.0.1-SNAPSHOT.jar --mode worker --spring.profiles.active=local`
 
 
+## Integration testing with Testcontainers (PostgreSQL + ElasticMQ)
+
+This project uses Testcontainers to spin up ephemeral infrastructure during integration tests:
+- PostgreSQL 16 (real database for Liquibase migrations and repository tests)
+- ElasticMQ (in-memory SQS emulator for SQS integration tests)
+
+You do not need to run docker-compose for tests. Testcontainers will pull images (on first run) and manage the container lifecycle automatically.
+
+Where it’s configured (for reference):
+- src/test/kotlin/…/testutil/TestContainersConfig.kt
+  - Starts PostgreSQLContainer and an ElasticMQ GenericContainer
+  - Uses Spring Boot 3 @ServiceConnection to auto-wire JDBC properties from the Postgres container
+- src/test/kotlin/…/testutil/DynamicTestContainersPropertyConfig.kt
+  - Dynamically registers Spring properties for the ElasticMQ container (endpoint, credentials, region)
+- src/test/resources/application.yml
+  - Common test defaults (Liquibase enabled, SQS listener settings, queue names)
+
+How to run the tests
+- Prerequisite: Docker Desktop running (WSL2 backend on Windows is recommended)
+- Run all tests
+  - Linux/macOS: `./gradlew test`
+  - Windows (PowerShell): `./gradlew.bat test`
+- Run a single test class
+  - Linux/macOS: `./gradlew test --tests "*JobWorkerIntegrationTest"`
+  - Windows: `./gradlew.bat test --tests "*JobWorkerIntegrationTest"`
+
+What happens under the hood
+- Testcontainers starts a Postgres 16 container and exposes JDBC URL to Spring via @ServiceConnection
+- Testcontainers starts an ElasticMQ container (softwaremill/elasticmq-native:1.6.15) with two queues:
+  - job-control-queue
+  - job-worker-queue
+- Dynamic property registration sets:
+  - spring.cloud.aws.sqs.endpoint to the mapped ElasticMQ URL
+  - spring.cloud.aws.credentials.access-key/secret-key to test values
+  - spring.cloud.aws.region.static to us-east-1
+- Your test context starts with those endpoints and credentials; SQS listeners and repositories use the containers.
+
+Tips and troubleshooting for Testcontainers
+- Ensure Docker Desktop is running before `gradlew test`
+- First run may take longer while images are pulled
+- If you see connection/timeouts:
+  - Windows: ensure WSL2 is enabled for Docker, and File Sharing/Network settings allow container networking
+  - Increase Docker resources (CPU/Memory) if tests are slow
+- Reuse mode (optional): set environment variable `TESTCONTAINERS_REUSE_ENABLE=true` to keep containers alive between runs (requires global enabling in `~/.testcontainers.properties`)
+- Clean up: Testcontainers stops containers automatically after the build
+
+
 ## Queues and Messaging
 - Control queue: receives `START_JOB` and `ERROR_RETRY` messages for orchestration
 - Worker queue: receives `WORKER_TASK` (and potential `WORKER_TASK_RETRY`) messages for processing

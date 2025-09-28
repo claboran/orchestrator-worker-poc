@@ -2,8 +2,7 @@ package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTest
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.ElasticMqTestContainers
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
@@ -15,14 +14,14 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.time.Duration
 
-@ElasticMqTest
+@IntegrationTests
 @ActiveProfiles("test", "worker")
 class JobWorkerIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
     private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
     @MockitoSpyBean private val jobWorker: JobWorker,
-) : ElasticMqTestContainers() {
+) {
 
     @BeforeEach
     fun beforeEach() {
@@ -39,7 +38,6 @@ class JobWorkerIntegrationTest @Autowired constructor(
             taskNumber = 1,
             totalTasks = 1,
         )
-
         val json = objectMapper.writeValueAsString(payload)
 
         sqsTemplate.send { sender ->
@@ -76,10 +74,9 @@ class JobWorkerIntegrationTest @Autowired constructor(
         }
 
         tasks.forEach { payload ->
-            val json = objectMapper.writeValueAsString(payload)
             sqsTemplate.send { sender ->
                 sender.queue(workerQueueName)
-                    .payload(json)
+                    .payload(objectMapper.writeValueAsString(payload))
                     .header("job-id", payload.jobId)
                     .header("task-id", payload.taskId)
                     .header("message-type", "WORKER_TASK")

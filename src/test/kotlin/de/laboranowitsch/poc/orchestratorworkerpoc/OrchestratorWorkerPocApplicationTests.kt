@@ -1,11 +1,10 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc
 
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTest
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTestContainers
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import org.junit.jupiter.api.Test
 
-@IntegrationTest
-class OrchestratorWorkerPocApplicationTests : IntegrationTestContainers() {
+@IntegrationTests
+class OrchestratorWorkerPocApplicationTests  {
 
     @Test
     fun contextLoads() {

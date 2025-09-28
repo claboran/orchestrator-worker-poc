@@ -1,15 +1,19 @@
 spring:
   liquibase:
-    enabled: false
-  jpa:
-    hibernate:
-      ddl-auto: create
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
   cloud:
     aws:
       sqs:
         listener:
           wait-time-seconds: 20
           max-number-of-messages: 1
+          acknowledgement-mode: manual
+          acknowledgement-timeout: 500ms
+          acknowledgement-retry-policy:
+            max-attempts: 1
+            backoff:
+              fixed-delay: 100ms
       region:
         static: us-east-1
       credentials:
