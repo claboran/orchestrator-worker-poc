@@ -57,6 +57,7 @@ class JobWorkerIntegrationTest @Autowired constructor(
                     eq("job-123"),
                     eq("task-1"),
                     any(),
+                    any(),
                 )
             }
     }
@@ -90,6 +91,7 @@ class JobWorkerIntegrationTest @Autowired constructor(
                 verify(jobWorker, times(3)).processTask(
                     any<WorkerJobPayload>(),
                     eq("job-456"),
+                    any(),
                     any(),
                     any(),
                 )

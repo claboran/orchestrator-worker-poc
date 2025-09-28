@@ -13,17 +13,18 @@ spring:
         # This tells the listener to wait up to 20 seconds for a message to arrive
         # before returning an empty response, significantly reducing idle chatter.
         listener:
-          wait-time-seconds: 20
+          wait-time-seconds: 30
           max-number-of-messages: 1 # How many messages to fetch in one poll
   datasource:
-    url: jdbc:postgresql://localhost:5432/orchestrator
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5432/pocdb
+    username: pocuser
+    password: pocpass
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: none
   liquibase:
+    enabled: true
     change-log: db/changelog/db.changelog-master.xml
 
 app:

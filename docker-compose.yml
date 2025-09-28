@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   elasticmq:
-    image: softwaremill/elasticmq-native:1.6.0
+    image: softwaremill/elasticmq-native:1.6.15
     container_name: poc-elasticmq
     ports:
       - "9324:9324"

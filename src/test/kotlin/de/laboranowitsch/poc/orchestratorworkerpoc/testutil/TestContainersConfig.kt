@@ -51,14 +51,26 @@ class TestContainerConfig {
             queues {
               # The queue for high-level job start commands
               job-control-queue {
-                defaultVisibilityTimeout = 60 seconds
+                defaultVisibilityTimeout = 180 seconds
+                    deadLetterQueue {
+                      name = "job-control-dlq"
+                      maxReceiveCount = 3
+                    }
               }
+            
+              job-control-dlq {}
 
               # The queue for the actual page-by-page work
               job-worker-queue {
-                defaultVisibilityTimeout = 30 seconds
+                defaultVisibilityTimeout = 180 seconds
+                deadLetterQueue {
+                    name = "job-worker-dlq"
+                    maxReceiveCount = 3
+                }
               }
             }
+            
+            job-worker-dlq {}
             EOF
             exec java -Dconfig.file=/tmp/elasticmq.conf -jar /opt/elasticmq.jar
             """.trimIndent()

@@ -5,6 +5,7 @@ import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.annotation.SqsListener
+import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -27,14 +28,18 @@ class JobWorker(
 
     // Listener now accepts a deserialized WorkerJobPayload directly (awspring's message conversion
     // will convert the JSON body to the target type when Content-Type is application/json).
-    @SqsListener("\${app.queues.worker-queue}")
+    @SqsListener(
+        value = ["\${app.queues.worker-queue}"],
+        acknowledgementMode = "MANUAL",
+    )
     fun onWorkerMessage(
         @Payload payload: WorkerJobPayload,
         @Header("job-id") jobId: String,
         @Header("task-id") taskId: String,
         @Header(value = "message-type", required = false) messageType: String? = null,
+        acknowledgement: Acknowledgement,
     ) {
-        processTask(payload, jobId, taskId, messageType)
+        processTask(payload, jobId, taskId, messageType, acknowledgement)
     }
 
     fun processTask(
@@ -42,6 +47,7 @@ class JobWorker(
         @Header("job-id") jobId: String,
         @Header("task-id") taskId: String,
         @Header(value = "message-type", required = false) messageType: String? = null,
+        acknowledgement: Acknowledgement,
     ) = runCatching {
         logger().info(
             "Worker received task [{}] for job [{}] with type [{}]; data='{}' (task {}/{}). Created at {}",
@@ -58,6 +64,7 @@ class JobWorker(
     }.fold(
         onSuccess = {
             logger().debug("Successfully processed task [{}] for job [{}]", taskId, jobId)
+            acknowledgement.acknowledge()
         },
         onFailure = { error ->
             logger().error(
@@ -67,7 +74,6 @@ class JobWorker(
                 error.message,
                 error,
             )
-            pushBackToWorkerQueue(jobId, taskId, payload)
         },
     )
 
