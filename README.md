@@ -8,6 +8,8 @@ A small proof‑of‑concept that demonstrates an orchestrator–worker pattern 
   - Orchestrator: accepts API requests, creates and dispatches tasks to a worker queue
   - Worker: consumes tasks from the worker queue and processes them
 - AWS SQS integration using Spring Cloud AWS (3.x)
+- Persistence with Spring Data JPA/Hibernate backed by PostgreSQL (JSONB via Hypersistence)
+- Database migrations with Liquibase
 - Local SQS emulator with ElasticMQ (docker‑compose)
 - Clear separation via Spring profiles and a simple CLI switch (`--mode`)
 - Integration tests with Testcontainers
@@ -17,13 +19,17 @@ A small proof‑of‑concept that demonstrates an orchestrator–worker pattern 
 - src/main/kotlin/…/controller/CalculationController.kt
   - REST endpoint to start a calculation job (orchestrator mode only)
 - src/main/kotlin/…/service/JobOrchestrator.kt
-  - Listens on the control queue, splits jobs into multiple worker tasks, and publishes them to the worker queue
+  - Listens on the control queue, splits jobs into multiple worker tasks, publishes them to the worker queue; sets JSON payloads and message headers; manual SQS acknowledgement
 - src/main/kotlin/…/service/JobWorker.kt
   - Listens on the worker queue and processes tasks
-- src/main/kotlin/…/service/WorkerJobPayload.kt
+- src/main/kotlin/…/data/WorkerJobPayload.kt
   - DTO for tasks sent to the worker queue
 - src/main/kotlin/…/util/cli/CommandLineParser.kt
   - Parses `--mode` CLI arg: `orchestrator` or `worker`
+- src/main/kotlin/…/state/JobState.kt, PageState.kt, JobStateRepository.kt, PageStateRepository.kt, JobStatus.kt, PageStatus.kt
+  - Persistence layer: JPA entities and repositories for persisting job and page state (JSONB fields via Hypersistence)
+- src/main/resources/db/changelog/** and db.changelog-master.xml
+  - Liquibase migrations creating job_state and page_state tables
 - src/main/resources/application.yml
   - Profiles and local SQS configuration (ports, queue names, etc.)
 - docker-compose.yml and docker/elasticmq/elasticmq.conf
@@ -110,6 +116,21 @@ Environment/Profiles
 - Always combine `--mode` with a Spring profile when running locally, e.g. `--spring.profiles.active=local`
 
 
+## Persistence
+- JPA entities:
+  - JobState (tracks a job lifecycle and stores the original request payload as JSONB)
+  - PageState (tracks per-task/page processing with structured JSONB data via Hypersistence JsonType)
+- Repositories:
+  - JobStateRepository (lookup by jobId)
+  - PageStateRepository
+- Database:
+  - PostgreSQL is used in integration tests via Testcontainers. For local dev runs without Postgres, persistence-related code is inactive unless you wire a datasource.
+- Migrations:
+  - Liquibase changelogs under `src/main/resources/db/changelog/**` create the `job_state` and `page_state` tables and columns.
+- Notes:
+  - JSONB mapping is provided by Hypersistence Utils `JsonType`.
+  - Entities include timestamps and status enums (JobStatus, PageStatus).
+
 ## Build, Test, and Package
 - Run tests:
   - Linux/macOS: `./gradlew test`
@@ -178,6 +199,7 @@ Tips and troubleshooting for Testcontainers
   - `job-id` (required)
   - `message-type` (e.g., START_JOB, WORKER_TASK, WORKER_TASK_RETRY, ERROR_RETRY)
   - `task-id` (for worker tasks)
+  - `Content-Type: application/json` (set by the orchestrator when publishing JSON payloads)
 
 
 ## Troubleshooting
@@ -209,7 +231,7 @@ This is a PoC and not intended for production. Feel free to open issues or pull 
 No explicit license provided. If you plan to publish this repository publicly (e.g., GitHub), consider adding a LICENSE file (e.g., MIT, Apache 2.0) to clarify usage terms.
 
 ---
-Last updated: 2025-09-21
+Last updated: 2025-09-29
 
 
 ## Running multiple instances in IntelliJ (one orchestrator + two workers)
