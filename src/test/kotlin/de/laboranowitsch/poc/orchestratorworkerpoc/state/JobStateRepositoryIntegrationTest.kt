@@ -19,9 +19,11 @@ class JobStateRepositoryIntegrationTest @Autowired constructor(
         val saved = repo.save(js)
 
         val found = repo.findByJobId("job-123")
-        assertThat(found).isNotNull
-        assertThat(found?.jobId).isEqualTo("job-123")
-        assertThat(found?.status).isEqualTo(JobStatus.CREATED)
+        with(found) {
+            assertThat(this).isNotNull
+            assertThat(this?.jobId).isEqualTo("job-123")
+            assertThat(this?.status).isEqualTo(JobStatus.CREATED)
+        }
 
         // also assert on the returned saved instance to avoid unused variable warning
         assertThat(saved.jobId).isEqualTo("job-123")

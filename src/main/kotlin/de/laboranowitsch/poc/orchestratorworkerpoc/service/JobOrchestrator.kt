@@ -52,11 +52,8 @@ class JobOrchestrator(
 
         when (messageType) {
             "START_JOB" -> handleStartJob(jobId, payload)
-            "ERROR_RETRY" -> handleErrorRetry(jobId, payload)
-            else -> {
-                logger().warn("Unknown message type [{}] for job [{}], treating as START_JOB", messageType, jobId)
-                handleStartJob(jobId, payload)
-            }
+            null -> throw IllegalArgumentException("Missing message-type header for job $jobId")
+            else -> throw IllegalArgumentException("Unsupported message-type '$messageType' for job $jobId")
         }
     }.fold(
         onSuccess = {
@@ -89,13 +86,6 @@ class JobOrchestrator(
         }
 
         logger().info("Dispatched {} tasks for job [{}] to worker queue", workerTasks.size, jobId)
-    }
-
-    private fun handleErrorRetry(jobId: String, payload: StartJobPayload) {
-        logger().info("Retrying failed job [{}]", jobId)
-        // For retry, we can implement different logic if needed
-        // For now, treat it the same as start job
-        handleStartJob(jobId, payload)
     }
 
     private fun generateWorkerTasks(jobId: String, payload: StartJobPayload): List<WorkerJobPayload> =

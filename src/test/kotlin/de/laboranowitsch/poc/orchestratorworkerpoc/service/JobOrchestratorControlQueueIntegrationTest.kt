@@ -48,68 +48,7 @@ class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
                 }, String::class.java)
                 kotlin.test.assertTrue(
                     messages.size >= 4,
-                    "expected at least 4 worker messages, found ${messages.size}"
-                )
-            }
-    }
-
-    @Test
-    fun `should handle ERROR_RETRY message type on control queue`() {
-        val jobId = "retry-job-${UUID.randomUUID()}"
-        val payload = StartJobPayload(
-            someData = "retry-test-data",
-            priority = "NORMAL"
-        )
-
-        // Send ERROR_RETRY message to control queue
-        sqsTemplate.send { sender ->
-            sender.queue(controlQueueName)
-                .payload(objectMapper.writeValueAsString(payload))
-                .header("job-id", jobId)
-                .header("message-type", "ERROR_RETRY")
-                .header("Content-Type", "application/json")
-        }
-
-        // Wait for 4 worker messages to be dispatched (retry should behave like START_JOB)
-        await()
-            .atMost(Duration.ofSeconds(60))
-            .untilAsserted {
-                val messages = sqsTemplate.receiveMany({ options ->
-                    options.queue(workerQueueName).maxNumberOfMessages(10)
-                }, String::class.java)
-                kotlin.test.assertTrue(
-                    messages.size >= 4,
-                    "expected at least 4 worker messages from retry, found ${messages.size}"
-                )
-            }
-    }
-
-    @Test
-    fun `should handle unknown message type by treating it as START_JOB`() {
-        val jobId = "unknown-type-job-${UUID.randomUUID()}"
-        val payload = StartJobPayload(
-            someData = "unknown-type-test-data"
-        )
-
-        // Send message with unknown message type to control queue
-        sqsTemplate.send { sender ->
-            sender.queue(controlQueueName)
-                .payload(objectMapper.writeValueAsString(payload))
-                .header("job-id", jobId)
-                .header("message-type", "UNKNOWN_TYPE")
-                .header("Content-Type", "application/json")
-        }
-
-        // Wait for 4 worker messages to be dispatched (should default to START_JOB behavior)
-        await()
-            .atMost(Duration.ofSeconds(60))
-            .untilAsserted {
-                val messages = sqsTemplate.receiveMany({ options ->
-                    options.queue(workerQueueName).maxNumberOfMessages(10)
-                }, String::class.java)
-                kotlin.test.assertTrue(
-                    messages.size >= 4,
-                    "expected at least 4 worker messages from unknown type, found ${messages.size}"
+                    "expected at least 4 worker messages, found ${messages.size}",
                 )
             }
     }

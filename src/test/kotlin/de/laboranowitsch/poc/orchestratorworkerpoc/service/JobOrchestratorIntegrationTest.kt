@@ -41,7 +41,7 @@ class JobOrchestratorIntegrationTest @Autowired constructor(
                 }
                 kotlin.test.assertTrue(
                     messages.size >= 4,
-                    "expected at least 4 worker messages, found ${messages.size}"
+                    "expected at least 4 worker messages, found ${messages.size}",
                 )
             }
     }

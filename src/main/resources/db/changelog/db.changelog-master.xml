@@ -5,8 +5,8 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- include the formatted SQL changelog -->
+    <!-- include the formatted SQL changelogs -->
     <include file="classpath:db/changelog/001-create-job-state-table.sql"/>
+    <include file="classpath:db/changelog/002-create-page-state-table.sql"/>
 
 </databaseChangeLog>
-
