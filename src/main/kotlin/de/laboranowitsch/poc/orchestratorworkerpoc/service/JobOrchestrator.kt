@@ -2,15 +2,16 @@ package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.laboranowitsch.poc.orchestratorworkerpoc.controller.StartJobPayload
-import de.laboranowitsch.poc.orchestratorworkerpoc.data.ErrorJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.annotation.SqsListener
+import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.Header
+import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Service
 
 @Service
@@ -19,7 +20,6 @@ class JobOrchestrator(
     private val sqsTemplate: SqsTemplate,
     private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
-    @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
 ) : LoggingAware {
 
     companion object {
@@ -38,29 +38,30 @@ class JobOrchestrator(
         }
     }
 
-    @SqsListener("\${app.queues.control-queue}")
+    @SqsListener(
+        value = ["\${app.queues.control-queue}"],
+        acknowledgementMode = "MANUAL",
+    )
     fun orchestrateJob(
-        payload: StartJobPayload,
+        @Payload payload: StartJobPayload,
         @Header("job-id") jobId: String,
         @Header(value = "message-type", required = false) messageType: String? = null,
+        acknowledgement: Acknowledgement,
     ) = runCatching {
         logger().info("Orchestrator received job [{}] with message type [{}]", jobId, messageType)
 
         when (messageType) {
             "START_JOB" -> handleStartJob(jobId, payload)
-            "ERROR_RETRY" -> handleErrorRetry(jobId, payload)
-            else -> {
-                logger().warn("Unknown message type [{}] for job [{}], treating as START_JOB", messageType, jobId)
-                handleStartJob(jobId, payload)
-            }
+            null -> throw IllegalArgumentException("Missing message-type header for job $jobId")
+            else -> throw IllegalArgumentException("Unsupported message-type '$messageType' for job $jobId")
         }
     }.fold(
         onSuccess = {
             logger().info("Successfully orchestrated job [{}]", jobId)
+            acknowledgement.acknowledge()
         },
         onFailure = { error ->
             logger().error("Failed to orchestrate job [{}]: {}", jobId, error.message, error)
-            sendErrorToControlQueue(jobId, error.message ?: "Unknown error occurred")
         },
     )
 
@@ -87,13 +88,6 @@ class JobOrchestrator(
         logger().info("Dispatched {} tasks for job [{}] to worker queue", workerTasks.size, jobId)
     }
 
-    private fun handleErrorRetry(jobId: String, payload: StartJobPayload) {
-        logger().info("Retrying failed job [{}]", jobId)
-        // For retry, we can implement different logic if needed
-        // For now, treat it the same as start job
-        handleStartJob(jobId, payload)
-    }
-
     private fun generateWorkerTasks(jobId: String, payload: StartJobPayload): List<WorkerJobPayload> =
         (1..WORKER_TASKS_COUNT).map { taskNumber ->
             WorkerJobPayload(
@@ -104,29 +98,4 @@ class JobOrchestrator(
                 totalTasks = WORKER_TASKS_COUNT,
             )
         }
-
-    private fun sendErrorToControlQueue(jobId: String, errorMessage: String) = runCatching {
-        val errorPayload = ErrorJobPayload(
-            originalJobId = jobId,
-            errorMessage = errorMessage,
-        )
-
-        sendJsonMessage(
-            controlQueueName,
-            errorPayload,
-            mapOf(
-                "job-id" to jobId,
-                "message-type" to "ERROR_RETRY",
-            ),
-        )
-
-        logger().info("Sent error payload for job [{}] back to control queue", jobId)
-    }.onFailure { sendError ->
-        logger().error(
-            "Failed to send error payload for job [{}] to control queue: {}",
-            jobId,
-            sendError.message,
-            sendError,
-        )
-    }
 }

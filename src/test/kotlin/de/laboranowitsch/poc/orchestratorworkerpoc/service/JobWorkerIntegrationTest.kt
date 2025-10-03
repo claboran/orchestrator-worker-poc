@@ -2,32 +2,26 @@ package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
-import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.AbstractElasticMqTest
+import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.atLeastOnce
-import org.mockito.kotlin.clearInvocations
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.times
-import org.mockito.kotlin.verify
+import org.mockito.kotlin.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.time.Duration
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@IntegrationTests
 @ActiveProfiles("test", "worker")
 class JobWorkerIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
     private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
     @MockitoSpyBean private val jobWorker: JobWorker,
-) : AbstractElasticMqTest() {
+) {
 
     @BeforeEach
     fun beforeEach() {
@@ -44,7 +38,6 @@ class JobWorkerIntegrationTest @Autowired constructor(
             taskNumber = 1,
             totalTasks = 1,
         )
-
         val json = objectMapper.writeValueAsString(payload)
 
         sqsTemplate.send { sender ->
@@ -64,6 +57,7 @@ class JobWorkerIntegrationTest @Autowired constructor(
                     eq("job-123"),
                     eq("task-1"),
                     any(),
+                    any(),
                 )
             }
     }
@@ -81,10 +75,9 @@ class JobWorkerIntegrationTest @Autowired constructor(
         }
 
         tasks.forEach { payload ->
-            val json = objectMapper.writeValueAsString(payload)
             sqsTemplate.send { sender ->
                 sender.queue(workerQueueName)
-                    .payload(json)
+                    .payload(objectMapper.writeValueAsString(payload))
                     .header("job-id", payload.jobId)
                     .header("task-id", payload.taskId)
                     .header("message-type", "WORKER_TASK")
@@ -98,6 +91,7 @@ class JobWorkerIntegrationTest @Autowired constructor(
                 verify(jobWorker, times(3)).processTask(
                     any<WorkerJobPayload>(),
                     eq("job-456"),
+                    any(),
                     any(),
                     any(),
                 )

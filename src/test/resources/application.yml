@@ -1,10 +1,19 @@
 spring:
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
   cloud:
     aws:
       sqs:
         listener:
           wait-time-seconds: 20
           max-number-of-messages: 1
+          acknowledgement-mode: manual
+          acknowledgement-timeout: 500ms
+          acknowledgement-retry-policy:
+            max-attempts: 1
+            backoff:
+              fixed-delay: 100ms
       region:
         static: us-east-1
       credentials:
@@ -15,3 +24,6 @@ app:
   queues:
     control-queue: job-control-queue
     worker-queue: job-worker-queue
+  page-payload:
+    number-of-pages: 3
+    uuids-per-page: 4
