@@ -1,6 +1,7 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
-import de.laboranowitsch.poc.orchestratorworkerpoc.state.*
+import de.laboranowitsch.poc.orchestratorworkerpoc.repository.JobStateRepository
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.*
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import org.springframework.beans.factory.annotation.Value
@@ -16,11 +17,11 @@ class PocPagePayloadService(
 ) : LoggingAware {
 
     @Transactional
-    fun generateForJob(jobId: String): JobState? =
+    fun generateForJob(id: UUID): JobState? =
         (0 until numberOfPages.coerceAtLeast(0))
             .fold(
                 JobState(
-                    jobId = jobId,
+                    id = id,
                     status = JobStatus.CREATED,
                 )
             ) { acc, _ ->
@@ -42,7 +43,7 @@ class PocPagePayloadService(
                 logger().info(
                     "Generated {} page(s) for job {} with {} UUID(s) per page",
                     numberOfPages,
-                    jobId,
+                    id,
                     uuidsPerPage,
                 )
             }

@@ -1,13 +1,14 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
-import de.laboranowitsch.poc.orchestratorworkerpoc.state.JobStatus
-import de.laboranowitsch.poc.orchestratorworkerpoc.state.PageStateRepository
-import de.laboranowitsch.poc.orchestratorworkerpoc.state.PageStatus
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.JobStatus
+import de.laboranowitsch.poc.orchestratorworkerpoc.repository.PageStateRepository
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageStatus
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.TestPropertySource
+import java.util.UUID
 
 @IntegrationTests
 @TestPropertySource(properties = [
@@ -22,14 +23,14 @@ class PocPagePayloadServiceIntegrationTest @Autowired constructor(
     @Test
     fun `generates configured pages with configured uuids and persists them`() {
         with(service.generateForJob(JOB_ID)!!) {
-            assertThat(jobId).isEqualTo(JOB_ID)
+            assertThat(id).isEqualTo(JOB_ID)
             assertThat(status).isEqualTo(JobStatus.CREATED)
         }
 
-        pageRepo.findByJobStateJobId(JOB_ID).let {
+        pageRepo.findByJobStateId(JOB_ID).let {
             assertThat(it).hasSize(EXPECTED_PAGES)
             assertThat(it).allSatisfy { p ->
-                assertThat(p.jobState?.jobId).isEqualTo(JOB_ID)
+                assertThat(p.jobState?.id).isEqualTo(JOB_ID)
                 assertThat(p.status).isEqualTo(PageStatus.CREATED)
                 assertThat(p.data).isNotNull
                 assertThat(p.data!!.itemIds).hasSize(EXPECTED_UUIDS_PER_PAGE)
@@ -38,7 +39,7 @@ class PocPagePayloadServiceIntegrationTest @Autowired constructor(
     }
 
     companion object {
-        const val JOB_ID = "job-gen-1"
+        val JOB_ID: UUID = UUID.randomUUID()
         const val EXPECTED_PAGES: Int = 4
         const val EXPECTED_UUIDS_PER_PAGE: Int = 6
     }

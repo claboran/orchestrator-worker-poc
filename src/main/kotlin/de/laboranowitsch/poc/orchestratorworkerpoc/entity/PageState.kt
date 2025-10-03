@@ -1,4 +1,4 @@
-package de.laboranowitsch.poc.orchestratorworkerpoc.state
+package de.laboranowitsch.poc.orchestratorworkerpoc.entity
 
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
