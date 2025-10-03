@@ -49,6 +49,28 @@ class PageStateRepositoryIntegrationTest @Autowired constructor(
         assertThat(updatedPageState.status).isEqualTo(PageStatus.RUNNING)
     }
 
+    @Test
+    fun `created and updated timestamps are set and updated`() {
+        val pageStates = pageRepo.findByJobStateId(JOB_ID)
+        val pageState = pageStates.first()
+
+        val createdAtInitial = pageState.createdAt
+        val updatedAtInitial = pageState.updatedAt
+
+        assertThat(createdAtInitial).isNotNull
+        assertThat(updatedAtInitial).isNull()
+
+        // modify and save to trigger update timestamp change
+        pageState.status = PageStatus.RUNNING
+        pageRepo.save(pageState)
+
+        val updatedPageState = pageRepo.findByJobStateId(JOB_ID).first()
+        val updatedAtAfter = updatedPageState.updatedAt
+
+        assertThat(updatedAtAfter).isNotNull
+        assertThat(updatedAtAfter).isAfter(createdAtInitial)
+    }
+
     companion object {
         private val JOB_ID: UUID = UUID.randomUUID()
         private val PAGED_ID: UUID = UUID.randomUUID()

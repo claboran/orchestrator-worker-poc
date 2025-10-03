@@ -42,6 +42,27 @@ class JobStateRepositoryIntegrationTest @Autowired constructor(
         jobState.status = JobStatus.FINISHED
     }
 
+    @Test
+    fun `created and updated timestamps are set and updated for job`() {
+        val jobState = repo.findByIdOrNull(JOB_ID)!!
+
+        val createdAtInitial = jobState.createdAt
+        val updatedAtInitial = jobState.updatedAt
+
+        assertThat(createdAtInitial).isNotNull
+        assertThat(updatedAtInitial).isNull()
+
+        // trigger an update
+        jobState.status = JobStatus.RUNNING
+        repo.save(jobState)
+
+        val updated = repo.findByIdOrNull(JOB_ID)!!
+        val updatedAtAfter = updated.updatedAt
+
+        assertThat(updatedAtAfter).isNotNull
+        assertThat(updatedAtAfter).isAfter(createdAtInitial)
+    }
+
     companion object {
         val JOB_ID: UUID = UUID.randomUUID()
 

@@ -28,7 +28,7 @@ class PageState(
     var createdAt: OffsetDateTime? = null,
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false, insertable = false)
     var updatedAt: OffsetDateTime? = null,
 
     // Many pages belong to one job. EAGER from the many side, lazy is configured on JobState.pages
