@@ -1,7 +1,6 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import de.laboranowitsch.poc.orchestratorworkerpoc.controller.StartJobPayload
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.StartJobMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
@@ -16,7 +15,6 @@ import java.util.*
 @ActiveProfiles("test", "orchestrator")
 class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
-    private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
 ) {
@@ -24,19 +22,17 @@ class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
     @Test
     fun `should dispatch worker tasks when receiving a message on control queue`() {
         val jobId = "test-job-${UUID.randomUUID()}"
-        val payload = StartJobPayload(
+        val message = StartJobMessage(
             someData = "test-data-for-control-queue",
             priority = "HIGH",
-            description = "Test job via control queue"
+            description = "Test job via control queue",
         )
 
-        // Send message directly to control queue
-        sqsTemplate.send { sender ->
+        // Send message directly to control queue - Spring Cloud AWS handles serialization
+        sqsTemplate.send<StartJobMessage> { sender ->
             sender.queue(controlQueueName)
-                .payload(objectMapper.writeValueAsString(payload))
+                .payload(message)
                 .header("job-id", jobId)
-                .header("message-type", "START_JOB")
-                .header("Content-Type", "application/json")
         }
 
         // Wait for 4 worker messages to be dispatched

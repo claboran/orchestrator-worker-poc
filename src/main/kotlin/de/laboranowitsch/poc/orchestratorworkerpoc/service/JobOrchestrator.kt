@@ -1,7 +1,8 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import de.laboranowitsch.poc.orchestratorworkerpoc.controller.StartJobPayload
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.OrchestratorMessage
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageDoneMessage
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.StartJobMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Service
 @Profile("orchestrator") // <<< Only active in orchestrator mode
 class JobOrchestrator(
     private val sqsTemplate: SqsTemplate,
-    private val objectMapper: ObjectMapper,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
 ) : LoggingAware {
 
@@ -26,34 +26,20 @@ class JobOrchestrator(
         private const val WORKER_TASKS_COUNT = 4
     }
 
-    @Suppress("SpreadOperator")
-    fun sendJsonMessage(queue: String, payloadObj: Any, headers: Map<String, String> = emptyMap()) {
-        val json = objectMapper.writeValueAsString(payloadObj)
-        sqsTemplate.send { sender ->
-            val req = sender.queue(queue)
-                .payload(json)
-            headers.forEach { (k, v) -> req.header(k, v) }
-            // set explicit content-type to indicate JSON payload
-            req.header("Content-Type", "application/json")
-        }
-    }
-
     @SqsListener(
         value = ["\${app.queues.control-queue}"],
         acknowledgementMode = "MANUAL",
     )
     fun orchestrateJob(
-        @Payload payload: StartJobPayload,
+        @Payload message: OrchestratorMessage,
         @Header("job-id") jobId: String,
-        @Header(value = "message-type", required = false) messageType: String? = null,
         acknowledgement: Acknowledgement,
     ) = runCatching {
-        logger().info("Orchestrator received job [{}] with message type [{}]", jobId, messageType)
+        logger().info("Orchestrator received job [{}] with message type [{}]", jobId, message::class.simpleName)
 
-        when (messageType) {
-            "START_JOB" -> handleStartJob(jobId, payload)
-            null -> throw IllegalArgumentException("Missing message-type header for job $jobId")
-            else -> throw IllegalArgumentException("Unsupported message-type '$messageType' for job $jobId")
+        when (message) {
+            is StartJobMessage -> handleStartJob(jobId, message)
+            is PageDoneMessage -> handlePageDone(jobId, message)
         }
     }.fold(
         onSuccess = {
@@ -65,35 +51,45 @@ class JobOrchestrator(
         },
     )
 
-    private fun handleStartJob(jobId: String, payload: StartJobPayload) {
-        logger().info("Starting orchestration for job [{}] with data: {}", jobId, payload.someData)
+    private fun handleStartJob(jobId: String, message: StartJobMessage) {
+        logger().info("Starting orchestration for job [{}] with data: {}", jobId, message.someData)
 
         // Generate worker tasks
-        val workerTasks = generateWorkerTasks(jobId, payload)
+        val workerTasks = generateWorkerTasks(jobId, message)
 
-        // Send tasks to worker queue as JSON
+        // Send tasks to worker queue - Spring Cloud AWS handles JSON serialization automatically
         workerTasks.forEach { task ->
-            sendJsonMessage(
-                workerQueueName,
-                task,
-                mapOf(
-                    "job-id" to jobId,
-                    "task-id" to task.taskId,
-                    "message-type" to "WORKER_TASK",
-                ),
-            )
+            sqsTemplate.send<WorkerJobPayload> { sender ->
+                sender.queue(workerQueueName)
+                    .payload(task)
+                    .header("job-id", jobId)
+                    .header("task-id", task.taskId)
+            }
             logger().debug("Sent task [{}] for job [{}] to worker queue", task.taskId, jobId)
         }
 
         logger().info("Dispatched {} tasks for job [{}] to worker queue", workerTasks.size, jobId)
     }
 
-    private fun generateWorkerTasks(jobId: String, payload: StartJobPayload): List<WorkerJobPayload> =
+    private fun handlePageDone(jobId: String, message: PageDoneMessage) {
+        logger().info(
+            "Page [{}] completed for job [{}], success: {}",
+            message.pageId,
+            jobId,
+            message.success,
+        )
+        if (!message.success) {
+            logger().warn("Page [{}] failed: {}", message.pageId, message.errorMessage)
+        }
+        // TODO: implement page completion logic (update job state, check if all pages done, etc.)
+    }
+
+    private fun generateWorkerTasks(jobId: String, message: StartJobMessage): List<WorkerJobPayload> =
         (1..WORKER_TASKS_COUNT).map { taskNumber ->
             WorkerJobPayload(
                 jobId = jobId,
                 taskId = "$jobId-task-$taskNumber",
-                data = "${payload.someData}-part-$taskNumber",
+                data = "${message.someData}-part-$taskNumber",
                 taskNumber = taskNumber,
                 totalTasks = WORKER_TASKS_COUNT,
             )

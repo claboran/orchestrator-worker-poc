@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import java.time.Duration
@@ -30,7 +31,11 @@ class JobOrchestratorIntegrationTest @Autowired constructor(
 
         // Call the REST endpoint
         val response = rest.postForEntity("/api/calculate/start", httpEntity, String::class.java)
-        assert(response.statusCode.is2xxSuccessful)
+
+        // Verify we get 202 Accepted
+        assert(response.statusCode == HttpStatus.ACCEPTED) {
+            "Expected 202 Accepted but got ${response.statusCode}"
+        }
 
         // Wait for 4 worker messages to be dispatched
         await()
