@@ -34,7 +34,7 @@ class PageState(
     // Many pages belong to one job. EAGER from the many side, lazy is configured on JobState.pages
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "job_state_id", nullable = false)
-    var jobState: JobState,
+    var jobState: JobState? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

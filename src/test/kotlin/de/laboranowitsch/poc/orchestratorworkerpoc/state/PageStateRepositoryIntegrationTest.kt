@@ -32,7 +32,7 @@ class PageStateRepositoryIntegrationTest @Autowired constructor(
         val p = found.first()
         assertThat(p.id).isEqualTo(savedPage.id)
         // jobState is nullable in the entity (to allow JPA no-arg). Use null-safe access in test.
-        assertThat(p.jobState.jobId).isEqualTo("job-with-pages")
+        assertThat(p.jobState!!.jobId).isEqualTo("job-with-pages")
         assertThat(p.data).isNotNull
         assertThat(p.data!!.itemIds).containsExactly(itemId)
     }
@@ -52,7 +52,7 @@ class PageStateRepositoryIntegrationTest @Autowired constructor(
         assertThat(pages).isNotNull
         assertThat(pages).hasSize(1)
         val p = pages.first()
-        assertThat(p.jobState.jobId).isEqualTo("job-cascade")
+        assertThat(p.jobState!!.jobId).isEqualTo("job-cascade")
         assertThat(p.data!!.itemIds).containsExactly(itemId)
     }
 }

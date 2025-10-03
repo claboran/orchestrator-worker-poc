@@ -31,6 +31,9 @@ app:
   queues:
     control-queue: "job-control-queue"
     worker-queue: "job-worker-queue"
+  page-payload:
+    number-of-pages: 2
+    uuids-per-page: 3
 
 server:
   port: 9944

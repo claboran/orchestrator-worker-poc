@@ -24,3 +24,6 @@ app:
   queues:
     control-queue: job-control-queue
     worker-queue: job-worker-queue
+  page-payload:
+    number-of-pages: 3
+    uuids-per-page: 4
