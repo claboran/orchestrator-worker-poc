@@ -4,6 +4,7 @@ import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageData
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import io.awspring.cloud.sqs.operations.SqsTemplate
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,6 +21,7 @@ import java.util.*
 class JobWorkerIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
+    @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
     @MockitoSpyBean private val jobWorker: JobWorker,
 ) {
 
@@ -50,6 +52,18 @@ class JobWorkerIntegrationTest @Autowired constructor(
                     eq(payload.pageId),
                     any(),
                 )
+                
+                // Verify PageDoneMessage is sent to control queue
+                val controlMessages = sqsTemplate.receiveMany({ options ->
+                    options.queue(controlQueueName).maxNumberOfMessages(10)
+                }, String::class.java)
+                assertThat(controlMessages).isNotEmpty
+                // Check that at least one message contains the pageId and FINISHED status
+                val hasExpectedMessage = controlMessages.any { msg ->
+                    val body = msg.payload
+                    body.contains(payload.pageId) && body.contains("FINISHED")
+                }
+                assertThat(hasExpectedMessage).isTrue()
             }
     }
 
@@ -78,6 +92,24 @@ class JobWorkerIntegrationTest @Autowired constructor(
                     any(),
                     any(),
                 )
+                
+                // Verify 3 PageDoneMessage messages with FINISHED status are sent to control queue
+                val controlMessages = sqsTemplate.receiveMany({ options ->
+                    options.queue(controlQueueName).maxNumberOfMessages(10)
+                }, String::class.java)
+                
+                // Count messages that contain jobId and FINISHED status
+                val jobMessages = controlMessages.filter { msg ->
+                    val body = msg.payload
+                    body.contains(JOB_ID.toString()) && body.contains("FINISHED")
+                }
+                assertThat(jobMessages.size).isGreaterThanOrEqualTo(3)
+                
+                // Verify all expected page IDs are present in messages
+                val allPageIdsPresent = JOB_ID_PAGE_ID_LIST.all { (_, pageId) ->
+                    controlMessages.any { it.payload.contains(pageId) }
+                }
+                assertThat(allPageIdsPresent).isTrue()
             }
     }
 

@@ -2,31 +2,37 @@ package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.OrchestratorMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageDoneMessage
-import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.*
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.FAILED
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.StartJobMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
 import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageData
+import de.laboranowitsch.poc.orchestratorworkerpoc.repository.PageStateRepository
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.annotation.SqsListener
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
 @Service
 @Profile("orchestrator") // <<< Only active in orchestrator mode
 class JobOrchestrator(
     private val sqsMessageSender: SqsMessageSender,
+    private val pocPagePayloadService: PocPagePayloadService,
+    private val pageStateRepository: PageStateRepository,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
 ) : LoggingAware {
     @SqsListener(
         value = ["\${app.queues.control-queue}"],
         acknowledgementMode = "MANUAL",
     )
+    @Transactional
     fun orchestrateJob(
         @Payload message: OrchestratorMessage,
         @Header("job-id") jobId: String,
@@ -40,7 +46,7 @@ class JobOrchestrator(
         }
     }.fold(
         onSuccess = {
-            logger().info("Successfully orchestrated job [{}]", jobId)
+            logger().info("Successfully received message job [{}]", jobId)
             acknowledgement.acknowledge()
         },
         onFailure = { error ->
@@ -51,22 +57,29 @@ class JobOrchestrator(
     private fun handleStartJob(jobId: String, message: StartJobMessage) {
         logger().info("Starting orchestration for job [{}] with payload jobId: {}", jobId, message.jobId)
 
-        val workerTasks = generateWorkerTasks(jobId, message)
-
-        // Send tasks to worker queue using SqsMessageSender for proper JSON serialization
-        workerTasks.forEach { task ->
+        val jobState = pocPagePayloadService.generateForJob(UUID.fromString(jobId))
+        pageStateRepository.findByJobStateId(
+            jobState?.id
+                ?: throw IllegalArgumentException("Job state not found"),
+        ).map {
+            WorkerJobPayload(
+                jobId = jobId,
+                pageId = it.id.toString(),
+                data = it.data ?: PageData(emptyList()),
+            )
+        }.forEach { page ->
             sqsMessageSender.sendMessage(
                 queueName = workerQueueName,
-                message = task,
+                message = page,
                 headers = mapOf(
                     "job-id" to jobId,
-                    "page-id" to task.pageId,
+                    "page-id" to page.pageId,
                 ),
             )
-            logger().debug("Sent task [{}] for job [{}] to worker queue", task.pageId, jobId)
+            logger().info("Sent page [{}] for job [{}] to worker queue", page.pageId, jobId)
         }
 
-        logger().info("Dispatched {} tasks for job [{}] to worker queue", workerTasks.size, jobId)
+        logger().info("Dispatched for job [{}] to worker queue", jobId)
     }
 
     private fun handlePageDone(jobId: String, message: PageDoneMessage) {
@@ -76,32 +89,16 @@ class JobOrchestrator(
             jobId,
             message.pageStatus,
         )
+        val pageState = pageStateRepository.findByIdOrNull(UUID.fromString(message.pageId)
+            ?: throw IllegalArgumentException("Page state not found for id: ${message.pageId}"))
+            pageState!!.status = message.pageStatus
         if (message.pageStatus == FAILED) {
             logger().warn("Page [{}] failed: {}", message.pageId, message.errorMessage)
+        } else {
+            logger().debug("Page [{}] finished successfully", message.pageId)
+
         }
-        // TODO: implement page completion logic (update job state, check if all pages done, etc.)
+        pageStateRepository.save(pageState)
     }
 
-    private fun generateWorkerTasks(jobId: String, message: StartJobMessage): List<WorkerJobPayload> =
-        WORKER_TASKS_COUNT.map { page ->
-            WorkerJobPayload(
-                jobId = jobId,
-                pageId = page.toString(),
-                data = PageData(
-                    itemIds = listOf(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                    ),
-                ),
-            )
-        }
-
-    companion object {
-        private val WORKER_TASKS_COUNT: List<UUID> = listOf(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-        )
-    }
 }

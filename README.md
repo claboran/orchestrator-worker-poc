@@ -19,21 +19,29 @@ A small proof‑of‑concept that demonstrates an orchestrator–worker pattern 
 - src/main/kotlin/…/controller/CalculationController.kt
   - REST endpoint to start a calculation job (orchestrator mode only)
 - src/main/kotlin/…/service/JobOrchestrator.kt
-  - Listens on the control queue, splits jobs into multiple worker tasks, publishes them to the worker queue; sets JSON payloads and message headers; manual SQS acknowledgement
+  - Listens on the control queue, splits jobs into multiple worker tasks, publishes them to the worker queue; persists job state and page state to PostgreSQL via Spring Data JPA repositories; uses JSON payloads with polymorphic sealed interfaces and message headers; manual SQS acknowledgement
 - src/main/kotlin/…/service/JobWorker.kt
-  - Listens on the worker queue and processes tasks
+  - Listens on the worker queue, processes tasks, and updates page state in the database via PageStateRepository
+- src/main/kotlin/…/service/SqsMessageSender.kt
+  - Service that handles sending messages to SQS with proper JSON serialization, ensuring polymorphic sealed interfaces are correctly serialized with @type discriminators
+- src/main/kotlin/…/data/OrchestratorMessage.kt, StartJobMessage.kt, PageDoneMessage.kt
+  - Sealed interface hierarchy for polymorphic orchestrator messages with Jackson @JsonTypeInfo discriminator
 - src/main/kotlin/…/data/WorkerJobPayload.kt
   - DTO for tasks sent to the worker queue
+- src/main/kotlin/…/entity/JobState.kt, PageState.kt
+  - JPA entities for persisting job and page state with JSONB columns (via Hypersistence JsonType)
+- src/main/kotlin/…/repository/JobStateRepository.kt, PageStateRepository.kt
+  - Spring Data JPA repositories for job and page state persistence
+- src/main/kotlin/…/entity/JobStatus.kt, PageStatus.kt
+  - Enums defining lifecycle states for jobs and pages
 - src/main/kotlin/…/util/cli/CommandLineParser.kt
   - Parses `--mode` CLI arg: `orchestrator` or `worker`
-- src/main/kotlin/…/state/JobState.kt, PageState.kt, JobStateRepository.kt, PageStateRepository.kt, JobStatus.kt, PageStatus.kt
-  - Persistence layer: JPA entities and repositories for persisting job and page state (JSONB fields via Hypersistence)
 - src/main/resources/db/changelog/** and db.changelog-master.xml
   - Liquibase migrations creating job_state and page_state tables
 - src/main/resources/application.yml
   - Profiles and local SQS configuration (ports, queue names, etc.)
 - docker-compose.yml and docker/elasticmq/elasticmq.conf
-  - Local ElasticMQ configuration
+  - Local ElasticMQ and PostgreSQL configuration
 
 
 ## Requirements
@@ -228,10 +236,14 @@ This is a PoC and not intended for production. Feel free to open issues or pull 
 
 
 ## License
-No explicit license provided. If you plan to publish this repository publicly (e.g., GitHub), consider adding a LICENSE file (e.g., MIT, Apache 2.0) to clarify usage terms.
 
+MIT License
 ---
-Last updated: 2025-09-29
+Last updated: 2025-10-05
+
+## Open items / Next steps
+- DLQ monitoring and handling: add a Dead-Letter Queue (DLQ) flow and periodic or event-driven checks to surface failed messages. Provide metrics/alerts and a remediation path (e.g., selective requeueing or marking the job as failed) after triage.
+- Final job completion check: add a finalization mechanism to confirm a job is completely finished. Likely by sending a delayed message (e.g., JOB_FINALIZE) to the orchestrator after workers report PageDone. The orchestrator can then verify that all pages are processed and none are stuck or in the DLQ. If the check succeeds, mark the job as FINISHED; otherwise, trigger retries or failure handling.
 
 
 ## Running multiple instances in IntelliJ (one orchestrator + two workers)
