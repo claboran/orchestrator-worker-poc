@@ -1,7 +1,7 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.repository
 
 import de.laboranowitsch.poc.orchestratorworkerpoc.entity.JobState
-import de.laboranowitsch.poc.orchestratorworkerpoc.entity.JobStatus
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.JobStatus.*
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -32,14 +32,14 @@ class JobStateRepositoryIntegrationTest @Autowired constructor(
 
         with(jobState!!) {
             assertThat(id).isEqualTo(JOB_ID)
-            assertThat(status).isEqualTo(JobStatus.CREATED)
+            assertThat(status).isEqualTo(CREATED)
         }
     }
 
     @Test
     fun `job state repository updates payload and timestamps`() {
         val jobState = repo.findByIdOrNull(JOB_ID)!!
-        jobState.status = JobStatus.FINISHED
+        jobState.status = FINISHED
     }
 
     @Test
@@ -53,7 +53,7 @@ class JobStateRepositoryIntegrationTest @Autowired constructor(
         assertThat(updatedAtInitial).isNull()
 
         // trigger an update
-        jobState.status = JobStatus.RUNNING
+        jobState.status = RUNNING
         repo.save(jobState)
 
         val updated = repo.findByIdOrNull(JOB_ID)!!
@@ -69,7 +69,7 @@ class JobStateRepositoryIntegrationTest @Autowired constructor(
         @JvmStatic
         fun createJobState() = JobState(
             id = JOB_ID,
-            status = JobStatus.CREATED,
+            status = CREATED,
         )
     }
 }

@@ -1,6 +1,8 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageDoneMessage
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.*
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.StartJobMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import io.awspring.cloud.sqs.operations.SqsTemplate
@@ -21,71 +23,53 @@ class JobOrchestratorPolymorphicMessagesIntegrationTest @Autowired constructor(
 
     @Test
     fun `should handle StartJobMessage with sealed interface polymorphism`() {
-        val jobId = "polymorphic-test-${UUID.randomUUID()}"
-        val message = StartJobMessage(
-            someData = "polymorphic-test-data",
-            description = "Testing sealed interface approach",
-            priority = "NORMAL",
-        )
 
-        // Send StartJobMessage - Spring automatically adds @type field for Jackson polymorphism
         sqsTemplate.send<StartJobMessage> { sender ->
             sender.queue(controlQueueName)
-                .payload(message)
-                .header("job-id", jobId)
+                .payload(createStartJobMessage())
+                .header("job-id", JOB_ID.toString())
         }
 
-        // Give orchestrator time to process
         await()
             .atMost(Duration.ofSeconds(5))
             .pollDelay(Duration.ofMillis(500))
             .untilAsserted {
-                // Test passes if no exception is thrown during message processing
                 assert(true)
             }
     }
 
     @Test
     fun `should handle PageDoneMessage with sealed interface polymorphism`() {
-        val jobId = "page-done-test-${UUID.randomUUID()}"
-        val pageId = UUID.randomUUID().toString()
-        val message = PageDoneMessage(
-            pageId = pageId,
-            success = true,
+        val message = createPageDoneMessage(
+            status = FINISHED,
             errorMessage = null,
         )
 
-        // Send PageDoneMessage - Spring automatically adds @type field for Jackson polymorphism
         sqsTemplate.send<PageDoneMessage> { sender ->
             sender.queue(controlQueueName)
                 .payload(message)
-                .header("job-id", jobId)
+                .header("job-id", JOB_ID.toString())
         }
 
-        // Give orchestrator time to process
         await()
             .atMost(Duration.ofSeconds(5))
             .pollDelay(Duration.ofMillis(500))
             .untilAsserted {
-                // Test passes if no exception is thrown during message processing
                 assert(true)
             }
     }
 
     @Test
     fun `should handle PageDoneMessage with failure`() {
-        val jobId = "page-failed-test-${UUID.randomUUID()}"
-        val pageId = UUID.randomUUID().toString()
-        val message = PageDoneMessage(
-            pageId = pageId,
-            success = false,
-            errorMessage = "Simulated processing error",
+        val message = createPageDoneMessage(
+            status = FAILED,
+            errorMessage = "Simulated error message",
         )
 
         sqsTemplate.send<PageDoneMessage> { sender ->
             sender.queue(controlQueueName)
                 .payload(message)
-                .header("job-id", jobId)
+                .header("job-id", JOB_ID.toString())
         }
 
         await()
@@ -94,6 +78,29 @@ class JobOrchestratorPolymorphicMessagesIntegrationTest @Autowired constructor(
             .untilAsserted {
                 assert(true)
             }
+    }
+
+    companion object {
+        private val JOB_ID: UUID = UUID.randomUUID()
+        private val PAGE_ID: UUID = UUID.randomUUID()
+
+        @JvmStatic
+        fun createStartJobMessage() = StartJobMessage(
+            jobId = JOB_ID.toString(),
+        )
+
+        @JvmStatic
+        fun createPageDoneMessage(
+            status: PageStatus,
+            errorMessage: String? = null,
+            jobId: String = JOB_ID.toString(),
+            pageId: String = PAGE_ID.toString(),
+        ) = PageDoneMessage(
+            jobId = jobId,
+            pageId = pageId,
+            pageStatus = status,
+            errorMessage = errorMessage,
+        )
     }
 }
 

@@ -21,18 +21,11 @@ class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
 
     @Test
     fun `should dispatch worker tasks when receiving a message on control queue`() {
-        val jobId = "test-job-${UUID.randomUUID()}"
-        val message = StartJobMessage(
-            someData = "test-data-for-control-queue",
-            priority = "HIGH",
-            description = "Test job via control queue",
-        )
 
-        // Send message directly to control queue - Spring Cloud AWS handles serialization
         sqsTemplate.send<StartJobMessage> { sender ->
             sender.queue(controlQueueName)
-                .payload(message)
-                .header("job-id", jobId)
+                .payload(createStartJobMessage())
+                .header("job-id", JOB_ID.toString())
         }
 
         // Wait for 4 worker messages to be dispatched
@@ -47,5 +40,14 @@ class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
                     "expected at least 4 worker messages, found ${messages.size}",
                 )
             }
+    }
+
+    companion object {
+        private val JOB_ID: UUID = UUID.randomUUID()
+
+        @JvmStatic
+        fun createStartJobMessage() = StartJobMessage(
+            jobId = JOB_ID.toString(),
+        )
     }
 }

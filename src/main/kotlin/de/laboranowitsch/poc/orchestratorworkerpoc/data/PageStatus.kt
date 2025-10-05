@@ -1,4 +1,4 @@
-package de.laboranowitsch.poc.orchestratorworkerpoc.entity
+package de.laboranowitsch.poc.orchestratorworkerpoc.data
 
 enum class PageStatus {
     CREATED,
@@ -6,4 +6,3 @@ enum class PageStatus {
     FINISHED,
     FAILED,
 }
-

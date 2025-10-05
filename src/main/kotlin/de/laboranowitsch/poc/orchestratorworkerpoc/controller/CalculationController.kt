@@ -7,7 +7,6 @@ import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.util.*
@@ -23,25 +22,22 @@ class CalculationController(
 ) : LoggingAware {
 
     @PostMapping("/start")
-    fun startCalculation(@RequestBody request: StartRequest): ResponseEntity<StartResponse> =
+    fun startCalculation(): ResponseEntity<StartResponse> =
         runCatching {
-            val jobId = UUID.randomUUID().toString()
-            val message = StartJobMessage(
-                someData = request.inputs.joinToString(","),
-                description = "Calculation job with ${request.inputs.size} inputs",
-            )
-
-            // Spring Cloud AWS automatically serializes the message to JSON
-            sqsTemplate.send<StartJobMessage> { sender ->
-                sender.queue(controlQueueName)
-                    .payload(message)
-                    .header("job-id", jobId)
+            UUID.randomUUID().toString().let {
+                val message = StartJobMessage(jobId = it)
+                sqsTemplate.send<StartJobMessage> { sender ->
+                    sender.queue(controlQueueName)
+                        .payload(message)
+                        .header("job-id", it)
+                }
+                StartResponse(it)
             }
-
-            logger().info("Started calculation job [{}] with inputs: {}", jobId, request.inputs)
-            StartResponse(jobId)
         }.fold(
-            onSuccess = { response -> ResponseEntity.accepted().body(response) },  // 202 Accepted
+            onSuccess = { response ->
+                logger().info("Started calculation job with id [{}]", response.jobId)
+                ResponseEntity.accepted().body(response)
+            },
             onFailure = { error ->
                 logger().error("Failed to start calculation: {}", error.message, error)
                 ResponseEntity.internalServerError().build()

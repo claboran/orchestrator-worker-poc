@@ -2,8 +2,10 @@ package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.OrchestratorMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageDoneMessage
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.*
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.StartJobMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageData
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.annotation.SqsListener
@@ -14,6 +16,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Service
+import java.util.*
 
 @Service
 @Profile("orchestrator") // <<< Only active in orchestrator mode
@@ -21,11 +24,6 @@ class JobOrchestrator(
     private val sqsTemplate: SqsTemplate,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
 ) : LoggingAware {
-
-    companion object {
-        private const val WORKER_TASKS_COUNT = 4
-    }
-
     @SqsListener(
         value = ["\${app.queues.control-queue}"],
         acknowledgementMode = "MANUAL",
@@ -52,9 +50,8 @@ class JobOrchestrator(
     )
 
     private fun handleStartJob(jobId: String, message: StartJobMessage) {
-        logger().info("Starting orchestration for job [{}] with data: {}", jobId, message.someData)
+        logger().info("Starting orchestration for job [{}] with payload jobId: {}", jobId, message.jobId)
 
-        // Generate worker tasks
         val workerTasks = generateWorkerTasks(jobId, message)
 
         // Send tasks to worker queue - Spring Cloud AWS handles JSON serialization automatically
@@ -63,9 +60,9 @@ class JobOrchestrator(
                 sender.queue(workerQueueName)
                     .payload(task)
                     .header("job-id", jobId)
-                    .header("task-id", task.taskId)
+                    .header("task-id", task.pageId)
             }
-            logger().debug("Sent task [{}] for job [{}] to worker queue", task.taskId, jobId)
+            logger().debug("Sent task [{}] for job [{}] to worker queue", task.pageId, jobId)
         }
 
         logger().info("Dispatched {} tasks for job [{}] to worker queue", workerTasks.size, jobId)
@@ -76,22 +73,34 @@ class JobOrchestrator(
             "Page [{}] completed for job [{}], success: {}",
             message.pageId,
             jobId,
-            message.success,
+            message.pageStatus,
         )
-        if (!message.success) {
+        if (message.pageStatus == FAILED) {
             logger().warn("Page [{}] failed: {}", message.pageId, message.errorMessage)
         }
         // TODO: implement page completion logic (update job state, check if all pages done, etc.)
     }
 
     private fun generateWorkerTasks(jobId: String, message: StartJobMessage): List<WorkerJobPayload> =
-        (1..WORKER_TASKS_COUNT).map { taskNumber ->
+        WORKER_TASKS_COUNT.map { page ->
             WorkerJobPayload(
                 jobId = jobId,
-                taskId = "$jobId-task-$taskNumber",
-                data = "${message.someData}-part-$taskNumber",
-                taskNumber = taskNumber,
-                totalTasks = WORKER_TASKS_COUNT,
+                pageId = page.toString(),
+                data = PageData(
+                    itemIds = listOf(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                    ),
+                ),
             )
         }
+
+    companion object {
+        private val WORKER_TASKS_COUNT: List<UUID> = listOf(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+        )
+    }
 }

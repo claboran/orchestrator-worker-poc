@@ -1,16 +1,9 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.data
 
-import java.time.Instant
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageData
 
-/**
- * Payload for worker job messages containing task information.
- */
 data class WorkerJobPayload(
     val jobId: String,
-    val taskId: String,
-    val data: String,
-    val taskNumber: Int,
-    val totalTasks: Int,
-    val createdAt: Instant = Instant.now(),
+    val pageId: String,
+    val data: PageData,
 )
-

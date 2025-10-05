@@ -1,6 +1,5 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
-import de.laboranowitsch.poc.orchestratorworkerpoc.controller.StartRequest
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.awaitility.Awaitility.await
@@ -25,19 +24,19 @@ class JobOrchestratorIntegrationTest @Autowired constructor(
 
     @Test
     fun `should dispatch worker tasks when receiving a start request`() {
-        val request = StartRequest(inputs = listOf("one", "two", "three"))
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
-        val httpEntity = HttpEntity(request, headers)
+        val httpEntity = HttpEntity<Void>(headers)
 
-        // Call the REST endpoint
-        val response = rest.postForEntity("/api/calculate/start", httpEntity, String::class.java)
+        val response = rest.postForEntity(
+            "/api/calculate/start",
+            httpEntity,
+            String::class.java,
+        )
 
-        // Verify we get 202 Accepted
         assert(response.statusCode == HttpStatus.ACCEPTED) {
             "Expected 202 Accepted but got ${response.statusCode}"
         }
 
-        // Wait for 4 worker messages to be dispatched
         await()
             .atMost(Duration.ofSeconds(60))
             .untilAsserted {

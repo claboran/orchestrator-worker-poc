@@ -1,5 +1,6 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.entity
 
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageState
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp

@@ -1,11 +1,21 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.entity
 
-import jakarta.persistence.*
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus
+import io.hypersistence.utils.hibernate.type.json.JsonType
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
+import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
+import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.Type
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.OffsetDateTime
-import java.util.*
+import java.util.UUID
 
 @Entity
 @Table(name = "page_state")
@@ -20,7 +30,7 @@ class PageState(
 
     // store PageData as jsonb and map directly to the Kotlin data class using Hypersistence JsonType
     @Column(name = "data", columnDefinition = "jsonb")
-    @Type(value = io.hypersistence.utils.hibernate.type.json.JsonType::class)
+    @Type(value = JsonType::class)
     var data: PageData? = null,
 
     @CreationTimestamp

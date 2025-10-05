@@ -1,6 +1,11 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.repository
 
-import de.laboranowitsch.poc.orchestratorworkerpoc.entity.*
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.CREATED
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.RUNNING
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.JobState
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.JobStatus
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageData
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageState
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -43,10 +48,10 @@ class PageStateRepositoryIntegrationTest @Autowired constructor(
     fun `update PageState with new status`() {
         val pageStates = pageRepo.findByJobStateId(JOB_ID)
         val pageState = pageStates.first()
-        pageState.status = PageStatus.RUNNING
+        pageState.status = RUNNING
         pageRepo.save(pageState)
         val updatedPageState = pageRepo.findByJobStateId(JOB_ID).first()
-        assertThat(updatedPageState.status).isEqualTo(PageStatus.RUNNING)
+        assertThat(updatedPageState.status).isEqualTo(RUNNING)
     }
 
     @Test
@@ -61,7 +66,7 @@ class PageStateRepositoryIntegrationTest @Autowired constructor(
         assertThat(updatedAtInitial).isNull()
 
         // modify and save to trigger update timestamp change
-        pageState.status = PageStatus.RUNNING
+        pageState.status = RUNNING
         pageRepo.save(pageState)
 
         val updatedPageState = pageRepo.findByJobStateId(JOB_ID).first()
@@ -87,7 +92,7 @@ class PageStateRepositoryIntegrationTest @Autowired constructor(
             addPage(
                 PageState(
                     id = PAGED_ID,
-                    status = PageStatus.CREATED,
+                    status = CREATED,
                     data = PAGE_DATA,
                 )
             )
