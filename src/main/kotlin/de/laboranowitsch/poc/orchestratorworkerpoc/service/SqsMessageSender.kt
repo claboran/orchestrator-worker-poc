@@ -30,7 +30,7 @@ class SqsMessageSender(
     ) {
         val json = objectMapper.writeValueAsString(message)
 
-        sqsTemplate.send<String> { sender ->
+        sqsTemplate.send { sender ->
             sender.queue(queueName)
                 .payload(json)
                 .header("Content-Type", "application/json")
