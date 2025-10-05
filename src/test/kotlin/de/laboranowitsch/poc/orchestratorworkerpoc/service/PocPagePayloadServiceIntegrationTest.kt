@@ -1,14 +1,14 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.CREATED
 import de.laboranowitsch.poc.orchestratorworkerpoc.entity.JobStatus
 import de.laboranowitsch.poc.orchestratorworkerpoc.repository.PageStateRepository
-import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageStatus
 import de.laboranowitsch.poc.orchestratorworkerpoc.testutil.IntegrationTests
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.TestPropertySource
-import java.util.UUID
+import java.util.*
 
 @IntegrationTests
 @TestPropertySource(properties = [
@@ -31,7 +31,7 @@ class PocPagePayloadServiceIntegrationTest @Autowired constructor(
             assertThat(it).hasSize(EXPECTED_PAGES)
             assertThat(it).allSatisfy { p ->
                 assertThat(p.jobState?.id).isEqualTo(JOB_ID)
-                assertThat(p.status).isEqualTo(PageStatus.CREATED)
+                assertThat(p.status).isEqualTo(CREATED)
                 assertThat(p.data).isNotNull
                 assertThat(p.data!!.itemIds).hasSize(EXPECTED_UUIDS_PER_PAGE)
             }

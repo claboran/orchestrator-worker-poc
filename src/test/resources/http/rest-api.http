@@ -3,8 +3,4 @@
 POST http://localhost:9946/api/calculate/start
 Content-Type: application/json
 
-{
-  "inputs": ["one", "two", "three"]
-}
-
 ###

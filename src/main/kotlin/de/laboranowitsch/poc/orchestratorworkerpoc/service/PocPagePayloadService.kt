@@ -1,5 +1,7 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus
+import de.laboranowitsch.poc.orchestratorworkerpoc.entity.PageState
 import de.laboranowitsch.poc.orchestratorworkerpoc.repository.JobStateRepository
 import de.laboranowitsch.poc.orchestratorworkerpoc.entity.*
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
