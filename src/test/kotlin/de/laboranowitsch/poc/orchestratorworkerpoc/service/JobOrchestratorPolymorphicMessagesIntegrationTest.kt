@@ -28,6 +28,7 @@ class JobOrchestratorPolymorphicMessagesIntegrationTest @Autowired constructor(
             sender.queue(controlQueueName)
                 .payload(createStartJobMessage())
                 .header("job-id", JOB_ID.toString())
+                .header("Content-Type", "application/json")
         }
 
         await()
@@ -49,6 +50,7 @@ class JobOrchestratorPolymorphicMessagesIntegrationTest @Autowired constructor(
             sender.queue(controlQueueName)
                 .payload(message)
                 .header("job-id", JOB_ID.toString())
+                .header("Content-Type", "application/json")
         }
 
         await()
@@ -70,6 +72,7 @@ class JobOrchestratorPolymorphicMessagesIntegrationTest @Autowired constructor(
             sender.queue(controlQueueName)
                 .payload(message)
                 .header("job-id", JOB_ID.toString())
+                .header("Content-Type", "application/json")
         }
 
         await()
@@ -103,4 +106,3 @@ class JobOrchestratorPolymorphicMessagesIntegrationTest @Autowired constructor(
         )
     }
 }
-

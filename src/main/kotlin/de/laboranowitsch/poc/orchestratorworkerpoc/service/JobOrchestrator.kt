@@ -10,7 +10,6 @@ import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.annotation.SqsListener
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement
-import io.awspring.cloud.sqs.operations.SqsTemplate
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.Header
@@ -21,7 +20,7 @@ import java.util.*
 @Service
 @Profile("orchestrator") // <<< Only active in orchestrator mode
 class JobOrchestrator(
-    private val sqsTemplate: SqsTemplate,
+    private val sqsMessageSender: SqsMessageSender,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
 ) : LoggingAware {
     @SqsListener(
@@ -54,14 +53,16 @@ class JobOrchestrator(
 
         val workerTasks = generateWorkerTasks(jobId, message)
 
-        // Send tasks to worker queue - Spring Cloud AWS handles JSON serialization automatically
+        // Send tasks to worker queue using SqsMessageSender for proper JSON serialization
         workerTasks.forEach { task ->
-            sqsTemplate.send<WorkerJobPayload> { sender ->
-                sender.queue(workerQueueName)
-                    .payload(task)
-                    .header("job-id", jobId)
-                    .header("task-id", task.pageId)
-            }
+            sqsMessageSender.sendMessage(
+                queueName = workerQueueName,
+                message = task,
+                headers = mapOf(
+                    "job-id" to jobId,
+                    "page-id" to task.pageId,
+                ),
+            )
             logger().debug("Sent task [{}] for job [{}] to worker queue", task.pageId, jobId)
         }
 

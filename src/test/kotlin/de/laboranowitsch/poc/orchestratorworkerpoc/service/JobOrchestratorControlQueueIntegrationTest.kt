@@ -26,6 +26,7 @@ class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
             sender.queue(controlQueueName)
                 .payload(createStartJobMessage())
                 .header("job-id", JOB_ID.toString())
+                .header("Content-Type", "application/json")
         }
 
         // Wait for 4 worker messages to be dispatched

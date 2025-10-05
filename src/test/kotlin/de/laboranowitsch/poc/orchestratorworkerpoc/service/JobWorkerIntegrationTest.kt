@@ -33,11 +33,12 @@ class JobWorkerIntegrationTest @Autowired constructor(
     fun `should process message from worker queue`() {
         val payload = createWorkerJobPayload()
 
-        sqsTemplate.send { sender ->
+        sqsTemplate.send<WorkerJobPayload> { sender ->
             sender.queue(workerQueueName)
                 .payload(payload)
                 .header("job-id", payload.jobId)
                 .header("page-id", payload.pageId)
+                .header("Content-Type", "application/json")
         }
 
         await()
@@ -59,11 +60,12 @@ class JobWorkerIntegrationTest @Autowired constructor(
         }
 
         workerPayload.forEach { payload ->
-            sqsTemplate.send { sender ->
+            sqsTemplate.send<WorkerJobPayload> { sender ->
                 sender.queue(workerQueueName)
                     .payload(payload)
                     .header("job-id", payload.jobId)
                     .header("page-id", payload.pageId)
+                    .header("Content-Type", "application/json")
             }
         }
 

@@ -27,9 +27,9 @@ class JobWorker : LoggingAware {
     }
 
     fun processPage(
-        @Payload payload: WorkerJobPayload,
-        @Header("job-id") jobId: String,
-        @Header("page-id") pageId: String,
+        payload: WorkerJobPayload,
+        jobId: String,
+        pageId: String,
         acknowledgement: Acknowledgement,
     ) = runCatching {
         logger().info(
