@@ -20,6 +20,7 @@ import java.util.*
 @ActiveProfiles("test", "worker")
 class JobWorkerIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
+    private val sqsMessageSender: SqsMessageSender,
     @param:Value("\${app.queues.worker-queue}") private val workerQueueName: String,
     @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
     @MockitoSpyBean private val jobWorker: JobWorker,
@@ -34,14 +35,11 @@ class JobWorkerIntegrationTest @Autowired constructor(
     @Test
     fun `should process message from worker queue`() {
         val payload = createWorkerJobPayload()
-
-        sqsTemplate.send<WorkerJobPayload> { sender ->
-            sender.queue(workerQueueName)
-                .payload(payload)
-                .header("job-id", payload.jobId)
-                .header("page-id", payload.pageId)
-                .header("Content-Type", "application/json")
-        }
+        sendWorkerMessage(
+            sqsMessageSender = sqsMessageSender,
+            queue = workerQueueName,
+            payload = payload,
+        )
 
         await()
             .atMost(Duration.ofSeconds(15))
@@ -69,18 +67,17 @@ class JobWorkerIntegrationTest @Autowired constructor(
 
     @Test
     fun `should handle multiple tasks with different task numbers`() {
-        val workerPayload = JOB_ID_PAGE_ID_LIST.map { idPair ->
-            createWorkerJobPayload(idPair.first, idPair.second)
-        }
-
-        workerPayload.forEach { payload ->
-            sqsTemplate.send<WorkerJobPayload> { sender ->
-                sender.queue(workerQueueName)
-                    .payload(payload)
-                    .header("job-id", payload.jobId)
-                    .header("page-id", payload.pageId)
-                    .header("Content-Type", "application/json")
-            }
+        JOB_ID_PAGE_ID_LIST.map { idPair ->
+            createWorkerJobPayload(
+                idPair.first,
+                idPair.second,
+            )
+        }.forEach { payload ->
+            sendWorkerMessage(
+                sqsMessageSender = sqsMessageSender,
+                queue = workerQueueName,
+                payload = payload,
+            )
         }
 
         await()
@@ -133,5 +130,21 @@ class JobWorkerIntegrationTest @Autowired constructor(
                 itemIds = listOf(UUID.randomUUID(), UUID.randomUUID()),
             ),
         )
+
+        @JvmStatic
+        fun sendWorkerMessage(
+            sqsMessageSender: SqsMessageSender,
+            queue: String,
+            payload: WorkerJobPayload,
+        ) {
+            sqsMessageSender.sendMessage(
+                queue,
+                payload,
+                mapOf(
+                    "job-id" to payload.jobId,
+                    "page-id" to payload.pageId,
+                ),
+            )
+        }
     }
 }

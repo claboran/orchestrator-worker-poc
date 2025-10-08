@@ -1,5 +1,6 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import de.laboranowitsch.poc.orchestratorworkerpoc.config.SqsCustomConfig.Companion.SQS_MESSAGE_CONTAINER_FACTORY
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageDoneMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.WorkerJobPayload
@@ -22,7 +23,8 @@ class JobWorker(
     @SqsListener(
         value = ["\${app.queues.worker-queue}"],
         acknowledgementMode = "MANUAL",
-    )
+        factory = SQS_MESSAGE_CONTAINER_FACTORY,
+        )
     fun onWorkerMessage(
         @Payload payload: WorkerJobPayload,
         @Header("job-id") jobId: String,

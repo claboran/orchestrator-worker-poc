@@ -20,6 +20,7 @@ import java.util.*
 @ActiveProfiles("test", "orchestrator")
 class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
     private val sqsTemplate: SqsTemplate,
+    private val sqsMessageSender: SqsMessageSender,
     private val jobStateRepository: JobStateRepository,
     private val pageStateRepository: PageStateRepository,
     @param:Value("\${app.queues.control-queue}") private val controlQueueName: String,
@@ -29,13 +30,11 @@ class JobOrchestratorControlQueueIntegrationTest @Autowired constructor(
     @Test
     fun `should dispatch worker tasks when receiving a message on control queue`() {
         // Send StartJobMessage - PocPagePayloadService will generate pages automatically
-        sqsTemplate.send<StartJobMessage> { sender ->
-            sender.queue(controlQueueName)
-                .payload(createStartJobMessage())
-                .header("job-id", JOB_ID.toString())
-                .header("Content-Type", "application/json")
-        }
-
+        sqsMessageSender.sendMessage(
+            controlQueueName,
+            createStartJobMessage(),
+            mapOf("job-id" to JOB_ID.toString()),
+        )
         // Wait for worker messages to be dispatched (default config generates pages)
         await()
             .atMost(Duration.ofSeconds(60))

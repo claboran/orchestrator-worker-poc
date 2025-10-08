@@ -5,19 +5,15 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.config.SqsListenerConfigurer
+import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.converter.MappingJackson2MessageConverter
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 @Configuration
-class AwsCustomConfig : LoggingAware {
-
-    companion object {
-        const val SQS_OBJECT_MAPPER = "sqsObjectMapper"
-        const val SQS_MESSAGE_CONVERTER = "sqsMessageConverter"
-    }
-
+class SqsCustomConfig : LoggingAware {
     /**
      * Defines the ObjectMapper specifically for SQS message serialization/deserialization.
      * This ObjectMapper is used by both the SqsTemplate (for sending) over SqsMessageSender
@@ -25,14 +21,12 @@ class AwsCustomConfig : LoggingAware {
      * serialization/deserialization of our polymorphic sealed interfaces.
      */
     @Bean(SQS_OBJECT_MAPPER)
-    fun sqsObjectMapper(): ObjectMapper {
-        return ObjectMapper().apply {
-            // This is essential for proper serialization/deserialization of Kotlin data classes
-            registerKotlinModule()
-            // Add other ObjectMapper customizations here if needed (e.g., date formats)
-        }.also {
-            logger().info("Created dedicated SQS ObjectMapper with Kotlin module")
-        }
+    fun sqsObjectMapper(): ObjectMapper = ObjectMapper().apply {
+        // This is essential for proper serialization/deserialization of Kotlin data classes
+        registerKotlinModule()
+        // Add other ObjectMapper customizations here if needed (e.g., date formats)
+    }.also {
+        logger().info("Created dedicated SQS ObjectMapper with Kotlin module")
     }
 
     /**
@@ -58,13 +52,35 @@ class AwsCustomConfig : LoggingAware {
     @Bean(SQS_MESSAGE_CONVERTER)
     fun sqsMessageConverter(
         @Qualifier(SQS_OBJECT_MAPPER) objectMapper: ObjectMapper,
-    ): MappingJackson2MessageConverter {
-        return MappingJackson2MessageConverter().apply {
-            setObjectMapper(objectMapper)
-            setSerializedPayloadClass(String::class.java)
-            isStrictContentTypeMatch = false
-        }.also {
-            logger().info("Configured MappingJackson2MessageConverter for SQS with custom ObjectMapper")
+    ): MappingJackson2MessageConverter = MappingJackson2MessageConverter().apply {
+        setObjectMapper(objectMapper)
+        setSerializedPayloadClass(String::class.java)
+        isStrictContentTypeMatch = false
+    }.also {
+        logger().info("Configured MappingJackson2MessageConverter for SQS with custom ObjectMapper")
+    }
+
+    /**
+     * Factory bean for creating SQS message listener containers.
+     */
+    @Bean(SQS_MESSAGE_CONTAINER_FACTORY)
+    fun sqsMessageContainerFactory(
+        asyncClient: SqsAsyncClient,
+    ): SqsMessageListenerContainerFactory<Any> = SqsMessageListenerContainerFactory
+        .builder<Any>()
+        .sqsAsyncClient(asyncClient)
+        .configure { options ->
+            options.autoStartup(true)
+            options.maxConcurrentMessages(1)
+            options.maxMessagesPerPoll(1)
+        }.build()
+        .also {
+            logger().info("Created SqsMessageListenerContainerFactory with injected message converter")
         }
+
+    companion object {
+        const val SQS_OBJECT_MAPPER = "sqsObjectMapper"
+        const val SQS_MESSAGE_CONVERTER = "sqsMessageConverter"
+        const val SQS_MESSAGE_CONTAINER_FACTORY = "sqsMessageContainerFactory"
     }
 }

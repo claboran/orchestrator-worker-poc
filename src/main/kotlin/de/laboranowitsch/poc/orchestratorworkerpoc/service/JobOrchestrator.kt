@@ -1,5 +1,6 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
+import de.laboranowitsch.poc.orchestratorworkerpoc.config.SqsCustomConfig.Companion.SQS_MESSAGE_CONTAINER_FACTORY
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.OrchestratorMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageDoneMessage
 import de.laboranowitsch.poc.orchestratorworkerpoc.data.PageStatus.FAILED
@@ -31,6 +32,7 @@ class JobOrchestrator(
     @SqsListener(
         value = ["\${app.queues.control-queue}"],
         acknowledgementMode = "MANUAL",
+        factory = SQS_MESSAGE_CONTAINER_FACTORY,
     )
     @Transactional
     fun orchestrateJob(

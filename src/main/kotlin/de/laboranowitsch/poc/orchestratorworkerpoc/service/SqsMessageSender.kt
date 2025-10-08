@@ -1,7 +1,7 @@
 package de.laboranowitsch.poc.orchestratorworkerpoc.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.laboranowitsch.poc.orchestratorworkerpoc.config.AwsCustomConfig
+import de.laboranowitsch.poc.orchestratorworkerpoc.config.SqsCustomConfig
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.LoggingAware
 import de.laboranowitsch.poc.orchestratorworkerpoc.util.logging.logger
 import io.awspring.cloud.sqs.operations.SqsTemplate
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service
 @Service
 class SqsMessageSender(
     private val sqsTemplate: SqsTemplate,
-    @param:Qualifier(AwsCustomConfig.SQS_OBJECT_MAPPER) private val objectMapper: ObjectMapper,
+    @param:Qualifier(SqsCustomConfig.SQS_OBJECT_MAPPER) private val objectMapper: ObjectMapper,
 ) : LoggingAware {
 
     /**
